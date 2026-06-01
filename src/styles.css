@@ -247,5 +247,4 @@
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
-  }
 }
