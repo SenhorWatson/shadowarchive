@@ -9,38 +9,175 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VaultRouteImport } from './routes/vault'
+import { Route as SourcesRouteImport } from './routes/sources'
+import { Route as InvestigatorRouteImport } from './routes/investigator'
+import { Route as GraphRouteImport } from './routes/graph'
+import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TheorySlugRouteImport } from './routes/theory.$slug'
 
+const VaultRoute = VaultRouteImport.update({
+  id: '/vault',
+  path: '/vault',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SourcesRoute = SourcesRouteImport.update({
+  id: '/sources',
+  path: '/sources',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvestigatorRoute = InvestigatorRouteImport.update({
+  id: '/investigator',
+  path: '/investigator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GraphRoute = GraphRouteImport.update({
+  id: '/graph',
+  path: '/graph',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExplorerRoute = ExplorerRouteImport.update({
+  id: '/explorer',
+  path: '/explorer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TheorySlugRoute = TheorySlugRouteImport.update({
+  id: '/theory/$slug',
+  path: '/theory/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/explorer': typeof ExplorerRoute
+  '/graph': typeof GraphRoute
+  '/investigator': typeof InvestigatorRoute
+  '/sources': typeof SourcesRoute
+  '/vault': typeof VaultRoute
+  '/theory/$slug': typeof TheorySlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/explorer': typeof ExplorerRoute
+  '/graph': typeof GraphRoute
+  '/investigator': typeof InvestigatorRoute
+  '/sources': typeof SourcesRoute
+  '/vault': typeof VaultRoute
+  '/theory/$slug': typeof TheorySlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/explorer': typeof ExplorerRoute
+  '/graph': typeof GraphRoute
+  '/investigator': typeof InvestigatorRoute
+  '/sources': typeof SourcesRoute
+  '/vault': typeof VaultRoute
+  '/theory/$slug': typeof TheorySlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/explorer'
+    | '/graph'
+    | '/investigator'
+    | '/sources'
+    | '/vault'
+    | '/theory/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/admin'
+    | '/explorer'
+    | '/graph'
+    | '/investigator'
+    | '/sources'
+    | '/vault'
+    | '/theory/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/explorer'
+    | '/graph'
+    | '/investigator'
+    | '/sources'
+    | '/vault'
+    | '/theory/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  ExplorerRoute: typeof ExplorerRoute
+  GraphRoute: typeof GraphRoute
+  InvestigatorRoute: typeof InvestigatorRoute
+  SourcesRoute: typeof SourcesRoute
+  VaultRoute: typeof VaultRoute
+  TheorySlugRoute: typeof TheorySlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/vault': {
+      id: '/vault'
+      path: '/vault'
+      fullPath: '/vault'
+      preLoaderRoute: typeof VaultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sources': {
+      id: '/sources'
+      path: '/sources'
+      fullPath: '/sources'
+      preLoaderRoute: typeof SourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/investigator': {
+      id: '/investigator'
+      path: '/investigator'
+      fullPath: '/investigator'
+      preLoaderRoute: typeof InvestigatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graph': {
+      id: '/graph'
+      path: '/graph'
+      fullPath: '/graph'
+      preLoaderRoute: typeof GraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explorer': {
+      id: '/explorer'
+      path: '/explorer'
+      fullPath: '/explorer'
+      preLoaderRoute: typeof ExplorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +185,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/theory/$slug': {
+      id: '/theory/$slug'
+      path: '/theory/$slug'
+      fullPath: '/theory/$slug'
+      preLoaderRoute: typeof TheorySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  ExplorerRoute: ExplorerRoute,
+  GraphRoute: GraphRoute,
+  InvestigatorRoute: InvestigatorRoute,
+  SourcesRoute: SourcesRoute,
+  VaultRoute: VaultRoute,
+  TheorySlugRoute: TheorySlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

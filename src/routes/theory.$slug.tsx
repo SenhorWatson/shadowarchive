@@ -122,7 +122,7 @@ function TheoryPage() {
               <Network className="h-4 w-4 text-accent" /> Entidades relacionadas
             </h2>
             <div className="grid sm:grid-cols-2 gap-2">
-              {theory.entities.map((e) => (
+              {theory.entities.map((e: string) => (
                 <div
                   key={e}
                   className="border border-border rounded-sm bg-card px-3 py-2 font-mono text-sm flex items-center gap-2"
@@ -153,7 +153,7 @@ function TheoryPage() {
               <Tag className="h-3 w-3" /> TAGS
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {theory.tags.map((t) => (
+              {theory.tags.map((t: string) => (
                 <span
                   key={t}
                   className="font-mono text-[10px] px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground border border-border"
