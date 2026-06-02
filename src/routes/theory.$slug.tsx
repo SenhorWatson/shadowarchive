@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, Clock, FileText, Network, Tag, Users } from "lucide-react";
 import { CredibilityBadge } from "@/components/shadow/CredibilityBadge";
 import { getTheoryBySlug } from "@/lib/theories.functions";
+import type { SourceRow } from "@/lib/theories.functions";
 
 export const Route = createFileRoute("/theory/$slug")({
   loader: async ({ params }) => {
@@ -174,7 +175,7 @@ function TheoryPage() {
               </p>
             ) : (
               <ul className="space-y-2 text-xs text-foreground/80">
-                {sources.map((s) => (
+                {sources.map((s: SourceRow) => (
                   <li key={s.id}>
                     · {s.title}
                     {s.year ? ` (${s.year})` : ""}
