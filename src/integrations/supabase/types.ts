@@ -74,6 +74,7 @@ export type Database = {
           created_at: string
           credibility: Database["public"]["Enums"]["credibility_level"]
           description: string | null
+          file_path: string | null
           id: string
           source_type: string
           theory_id: string
@@ -87,6 +88,7 @@ export type Database = {
           created_at?: string
           credibility?: Database["public"]["Enums"]["credibility_level"]
           description?: string | null
+          file_path?: string | null
           id?: string
           source_type: string
           theory_id: string
@@ -100,6 +102,7 @@ export type Database = {
           created_at?: string
           credibility?: Database["public"]["Enums"]["credibility_level"]
           description?: string | null
+          file_path?: string | null
           id?: string
           source_type?: string
           theory_id?: string
@@ -198,6 +201,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_admin_if_none: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -1,109 +1,626 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Upload, ShieldAlert, Activity, FileWarning } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import {
+  ShieldAlert,
+  Loader2,
+  Plus,
+  FileText,
+  Upload,
+  Crown,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
 import { PageHeader } from "@/components/shadow/PageHeader";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  getMyRoles,
+  claimAdmin,
+  createTheory,
+  createSource,
+  createSignedUpload,
+  listModerationLogs,
+} from "@/lib/admin.functions";
+import { listTheories } from "@/lib/theories.functions";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
       { title: "Admin Panel — ShadowArchive AI" },
-      {
-        name: "description",
-        content: "Painel administrativo do ShadowArchive.",
-      },
-      { property: "og:title", content: "Admin Panel — ShadowArchive AI" },
-      {
-        property: "og:description",
-        content: "Gerenciamento, moderação e analytics.",
-      },
+      { name: "description", content: "Painel administrativo do ShadowArchive." },
     ],
   }),
   component: AdminPage,
 });
 
-const logs = [
-  { id: "log-001", level: "blocked", reason: "Keyword: UFO", time: "há 5 min" },
-  { id: "log-002", level: "approved", reason: "Upload aprovado: cia_jfk.pdf", time: "há 22 min" },
-  { id: "log-003", level: "flagged", reason: "Revisão manual: discurso ambíguo", time: "há 1 h" },
-  { id: "log-004", level: "blocked", reason: "Keyword: religion", time: "há 2 h" },
-];
+const INPUT =
+  "w-full bg-background border border-border px-3 py-2 font-mono text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent transition-colors";
+const LABEL =
+  "block text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-1";
 
 function AdminPage() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-md mx-auto px-6 py-20 text-center">
+        <ShieldAlert className="h-10 w-10 text-accent mx-auto mb-3" />
+        <h1 className="font-stamp text-2xl mb-2">Acesso restrito</h1>
+        <p className="text-sm text-muted-foreground mb-6 font-mono">
+          Apenas operadores autenticados podem acessar o painel.
+        </p>
+        <Link
+          to="/auth"
+          className="inline-flex items-center gap-2 border border-accent text-accent px-4 py-2 font-mono text-sm uppercase tracking-widest hover:bg-accent/10"
+        >
+          Acessar // operador
+        </Link>
+      </div>
+    );
+  }
+
+  return <AdminAuthenticated />;
+}
+
+function AdminAuthenticated() {
+  const fetchRoles = useServerFn(getMyRoles);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["my-roles"],
+    queryFn: () => fetchRoles(),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  const roles = data?.roles ?? [];
+  const isEditor = roles.includes("admin") || roles.includes("editor");
+
+  if (!isEditor) {
+    return <NoPrivileges anyAdmin={data?.anyAdminExists ?? false} onPromoted={() => refetch()} />;
+  }
+
+  return <AdminConsole roles={roles} />;
+}
+
+function NoPrivileges({ anyAdmin, onPromoted }: { anyAdmin: boolean; onPromoted: () => void }) {
+  const claim = useServerFn(claimAdmin);
+  const mutation = useMutation({
+    mutationFn: () => claim(),
+    onSuccess: (res) => {
+      if (res.promoted) onPromoted();
+    },
+  });
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
+    <div className="max-w-xl mx-auto px-6 py-16 text-center">
+      <ShieldAlert className="h-10 w-10 text-accent mx-auto mb-3" />
+      <h1 className="font-stamp text-2xl mb-2">Sem privilégios</h1>
+      <p className="text-sm text-muted-foreground font-mono mb-6">
+        Sua conta não possui papel <code>admin</code> ou <code>editor</code>.
+      </p>
+
+      {!anyAdmin && (
+        <div className="border border-accent/40 bg-accent/5 p-6 text-left">
+          <div className="flex items-center gap-2 mb-2 text-accent">
+            <Crown className="h-4 w-4" />
+            <span className="font-mono text-xs uppercase tracking-widest">Bootstrap</span>
+          </div>
+          <p className="text-sm text-foreground/90 mb-4">
+            Nenhum admin existe ainda. Você pode reivindicar o cargo de admin desta
+            instância — isso só funciona uma vez.
+          </p>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-4 py-2 font-mono text-xs uppercase tracking-widest hover:opacity-90 disabled:opacity-50"
+          >
+            {mutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Crown className="h-3.5 w-3.5" />
+            )}
+            Reivindicar admin
+          </button>
+          {mutation.data && !mutation.data.promoted && (
+            <p className="mt-3 text-xs text-destructive font-mono">
+              Já existe um admin nesta instância.
+            </p>
+          )}
+          {mutation.error && (
+            <p className="mt-3 text-xs text-destructive font-mono">
+              {(mutation.error as Error).message}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminConsole({ roles }: { roles: string[] }) {
+  const isAdmin = roles.includes("admin");
+  return (
+    <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">
       <PageHeader
         code="06 / ADMIN PANEL"
         title="Centro de Controle"
-        description="Ingestão documental, moderação automática, logs e analytics básicos."
+        description="Catalogação, ingestão documental e moderação editorial."
       />
-
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
-        {[
-          { icon: Activity, label: "UPLOADS / 24H", value: "32" },
-          { icon: ShieldAlert, label: "BLOQUEIOS / 24H", value: "16" },
-          { icon: FileWarning, label: "PENDENTES REVISÃO", value: "4" },
-        ].map((s) => (
-          <div key={s.label} className="border border-border rounded-sm bg-card p-5 flex items-center gap-4">
-            <s.icon className="h-6 w-6 text-accent" />
-            <div>
-              <div className="font-stamp text-3xl text-foreground">{s.value}</div>
-              <div className="font-mono text-[10px] tracking-widest text-muted-foreground">
-                {s.label}
-              </div>
-            </div>
-          </div>
+      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest">
+        <span className="text-muted-foreground">PAPÉIS:</span>
+        {roles.map((r) => (
+          <span
+            key={r}
+            className="border border-accent/40 text-accent px-2 py-0.5 bg-accent/5"
+          >
+            {r}
+          </span>
         ))}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Upload */}
-        <div className="border border-border rounded-sm bg-card p-6">
-          <h2 className="font-stamp text-xl text-foreground mb-1">Ingestão documental</h2>
-          <p className="text-xs text-muted-foreground mb-4 font-mono">
-            PDF · EPUB · TXT · MD · OCR · transcrições
-          </p>
-          <label className="block border-2 border-dashed border-border rounded-sm p-10 text-center hover:border-accent transition cursor-pointer">
-            <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-            <div className="font-mono text-sm text-foreground mb-1">
-              arraste arquivos ou clique para selecionar
-            </div>
-            <div className="font-mono text-[10px] text-muted-foreground">
-              max 50MB · pipeline: extract → chunk → embed → index
-            </div>
-            <input type="file" className="hidden" />
-          </label>
-        </div>
-
-        {/* Moderation log */}
-        <div className="border border-border rounded-sm bg-card">
-          <div className="border-b border-border px-5 py-3 flex items-center justify-between">
-            <h2 className="font-stamp text-xl text-foreground">Logs de moderação</h2>
-            <span className="font-mono text-[10px] text-accent">LIVE</span>
-          </div>
-          <ul className="divide-y divide-border">
-            {logs.map((l) => (
-              <li key={l.id} className="px-5 py-3 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span
-                    className={`font-mono text-[9px] tracking-widest px-1.5 py-0.5 rounded-sm border uppercase ${
-                      l.level === "blocked"
-                        ? "border-destructive/40 text-destructive bg-destructive/10"
-                        : l.level === "flagged"
-                          ? "border-primary/40 text-primary bg-primary/10"
-                          : "border-accent/40 text-accent bg-accent/10"
-                    }`}
-                  >
-                    {l.level}
-                  </span>
-                  <span className="text-sm text-foreground/90 truncate">{l.reason}</span>
-                </div>
-                <span className="font-mono text-[10px] text-muted-foreground shrink-0">
-                  {l.time}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <TheoryForm />
+        <SourceForm />
       </div>
+
+      {isAdmin && <ModerationLogs />}
     </div>
   );
+}
+
+function TheoryForm() {
+  const qc = useQueryClient();
+  const create = useServerFn(createTheory);
+  const [form, setForm] = useState({
+    slug: "",
+    title: "",
+    codename: "",
+    summary: "",
+    category: "",
+    tags: "",
+    entities: "",
+    credibility: "unverified" as const,
+    classification: "DECLASSIFIED" as const,
+    year: "",
+  });
+  const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      create({
+        data: {
+          slug: form.slug,
+          title: form.title,
+          codename: form.codename,
+          summary: form.summary,
+          category: form.category,
+          tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
+          entities: form.entities.split(",").map((s) => s.trim()).filter(Boolean),
+          credibility: form.credibility,
+          classification: form.classification,
+          year: form.year || null,
+        },
+      }),
+    onSuccess: () => {
+      setOk(true);
+      setErr(null);
+      setForm({ ...form, slug: "", title: "", codename: "", summary: "" });
+      qc.invalidateQueries({ queryKey: ["theories"] });
+    },
+    onError: (e) => {
+      setOk(false);
+      setErr(e instanceof Error ? e.message : "Erro");
+    },
+  });
+
+  return (
+    <section className="border border-border bg-card rounded-sm">
+      <header className="border-b border-border px-5 py-3 flex items-center justify-between">
+        <h2 className="font-stamp text-xl">Nova teoria</h2>
+        <FileText className="h-4 w-4 text-muted-foreground" />
+      </header>
+      <form
+        className="p-5 space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          mutation.mutate();
+        }}
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={LABEL}>SLUG</label>
+            <input
+              className={INPUT}
+              value={form.slug}
+              onChange={(e) => setForm({ ...form, slug: e.target.value })}
+              placeholder="cointelpro"
+              required
+            />
+          </div>
+          <div>
+            <label className={LABEL}>CODENAME</label>
+            <input
+              className={INPUT}
+              value={form.codename}
+              onChange={(e) => setForm({ ...form, codename: e.target.value })}
+              placeholder="OP-COINTEL"
+              required
+            />
+          </div>
+        </div>
+        <div>
+          <label className={LABEL}>TÍTULO</label>
+          <input
+            className={INPUT}
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <label className={LABEL}>SUMÁRIO</label>
+          <textarea
+            className={cn(INPUT, "min-h-[90px]")}
+            value={form.summary}
+            onChange={(e) => setForm({ ...form, summary: e.target.value })}
+            required
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={LABEL}>CATEGORIA</label>
+            <input
+              className={INPUT}
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              placeholder="vigilância"
+              required
+            />
+          </div>
+          <div>
+            <label className={LABEL}>ANO</label>
+            <input
+              className={INPUT}
+              value={form.year}
+              onChange={(e) => setForm({ ...form, year: e.target.value })}
+              placeholder="1956-1971"
+            />
+          </div>
+        </div>
+        <div>
+          <label className={LABEL}>TAGS (vírgula)</label>
+          <input
+            className={INPUT}
+            value={form.tags}
+            onChange={(e) => setForm({ ...form, tags: e.target.value })}
+            placeholder="fbi, vigilância, contrainteligência"
+          />
+        </div>
+        <div>
+          <label className={LABEL}>ENTIDADES (vírgula)</label>
+          <input
+            className={INPUT}
+            value={form.entities}
+            onChange={(e) => setForm({ ...form, entities: e.target.value })}
+            placeholder="FBI, J. Edgar Hoover"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={LABEL}>CREDIBILIDADE</label>
+            <select
+              className={INPUT}
+              value={form.credibility}
+              onChange={(e) => setForm({ ...form, credibility: e.target.value as typeof form.credibility })}
+            >
+              {["confirmed", "partial", "unverified", "speculative", "narrative"].map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>CLASSIFICAÇÃO</label>
+            <select
+              className={INPUT}
+              value={form.classification}
+              onChange={(e) => setForm({ ...form, classification: e.target.value as typeof form.classification })}
+            >
+              {["TOP SECRET", "CONFIDENTIAL", "DECLASSIFIED", "RESTRICTED"].map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <FormFeedback err={err} ok={ok} okMsg="Teoria registrada." />
+
+        <button
+          type="submit"
+          disabled={mutation.isPending}
+          className="w-full inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground font-mono text-sm uppercase tracking-widest py-2.5 hover:bg-primary/90 disabled:opacity-50"
+        >
+          {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          Registrar teoria
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function SourceForm() {
+  const qc = useQueryClient();
+  const fetchTheories = useServerFn(listTheories);
+  const { data: theoriesData } = useQuery({
+    queryKey: ["theories"],
+    queryFn: () => fetchTheories(),
+  });
+  const create = useServerFn(createSource);
+  const signUpload = useServerFn(createSignedUpload);
+
+  const [form, setForm] = useState({
+    theory_id: "",
+    title: "",
+    source_type: "document",
+    agency: "",
+    year: "",
+    url: "",
+    description: "",
+    credibility: "unverified" as const,
+    file_path: "" as string | null,
+  });
+  const [file, setFile] = useState<File | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      let file_path: string | null = null;
+      if (file) {
+        const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, "_");
+        const { path, token } = await signUpload({ data: { filename: safeName } });
+        const { error: upErr } = await supabase.storage
+          .from("documents")
+          .uploadToSignedUrl(path, token, file);
+        if (upErr) throw new Error(upErr.message);
+        file_path = path;
+      }
+      return create({
+        data: {
+          theory_id: form.theory_id,
+          title: form.title,
+          source_type: form.source_type,
+          agency: form.agency || null,
+          year: form.year || null,
+          url: form.url || null,
+          description: form.description || null,
+          credibility: form.credibility,
+          file_path,
+        },
+      });
+    },
+    onSuccess: () => {
+      setOk(true);
+      setErr(null);
+      setForm({ ...form, title: "", url: "", description: "" });
+      setFile(null);
+      qc.invalidateQueries({ queryKey: ["theories"] });
+      qc.invalidateQueries({ queryKey: ["sources"] });
+    },
+    onError: (e) => {
+      setOk(false);
+      setErr(e instanceof Error ? e.message : "Erro");
+    },
+  });
+
+  return (
+    <section className="border border-border bg-card rounded-sm">
+      <header className="border-b border-border px-5 py-3 flex items-center justify-between">
+        <h2 className="font-stamp text-xl">Nova fonte / documento</h2>
+        <Upload className="h-4 w-4 text-muted-foreground" />
+      </header>
+      <form
+        className="p-5 space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          mutation.mutate();
+        }}
+      >
+        <div>
+          <label className={LABEL}>TEORIA</label>
+          <select
+            className={INPUT}
+            required
+            value={form.theory_id}
+            onChange={(e) => setForm({ ...form, theory_id: e.target.value })}
+          >
+            <option value="">— selecione —</option>
+            {(theoriesData?.theories ?? []).map((t) => (
+              <option key={t.id} value={t.id}>{t.codename} · {t.title}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={LABEL}>TÍTULO</label>
+          <input
+            className={INPUT}
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            required
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={LABEL}>TIPO</label>
+            <input
+              className={INPUT}
+              value={form.source_type}
+              onChange={(e) => setForm({ ...form, source_type: e.target.value })}
+              placeholder="document, foia, report..."
+            />
+          </div>
+          <div>
+            <label className={LABEL}>AGÊNCIA</label>
+            <input
+              className={INPUT}
+              value={form.agency}
+              onChange={(e) => setForm({ ...form, agency: e.target.value })}
+              placeholder="CIA, FBI..."
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={LABEL}>ANO</label>
+            <input
+              className={INPUT}
+              value={form.year}
+              onChange={(e) => setForm({ ...form, year: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className={LABEL}>CREDIBILIDADE</label>
+            <select
+              className={INPUT}
+              value={form.credibility}
+              onChange={(e) => setForm({ ...form, credibility: e.target.value as typeof form.credibility })}
+            >
+              {["confirmed", "partial", "unverified", "speculative", "narrative"].map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className={LABEL}>URL (opcional)</label>
+          <input
+            className={INPUT}
+            type="url"
+            value={form.url}
+            onChange={(e) => setForm({ ...form, url: e.target.value })}
+            placeholder="https://..."
+          />
+        </div>
+        <div>
+          <label className={LABEL}>DESCRIÇÃO</label>
+          <textarea
+            className={cn(INPUT, "min-h-[70px]")}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className={LABEL}>ARQUIVO (opcional, máx. 50MB)</label>
+          <input
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="font-mono text-xs text-muted-foreground file:mr-3 file:py-1 file:px-3 file:border file:border-border file:bg-background file:text-foreground file:font-mono file:text-xs"
+          />
+          {file && (
+            <p className="mt-1 font-mono text-[10px] text-accent">
+              {file.name} · {(file.size / 1024).toFixed(0)} KB
+            </p>
+          )}
+        </div>
+
+        <FormFeedback err={err} ok={ok} okMsg="Fonte registrada." />
+
+        <button
+          type="submit"
+          disabled={mutation.isPending}
+          className="w-full inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground font-mono text-sm uppercase tracking-widest py-2.5 hover:bg-primary/90 disabled:opacity-50"
+        >
+          {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          Registrar fonte
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function ModerationLogs() {
+  const fetchLogs = useServerFn(listModerationLogs);
+  const { data, isLoading } = useQuery({
+    queryKey: ["moderation-logs"],
+    queryFn: () => fetchLogs(),
+    refetchInterval: 15000,
+  });
+
+  return (
+    <section className="border border-border bg-card rounded-sm">
+      <header className="border-b border-border px-5 py-3 flex items-center justify-between">
+        <h2 className="font-stamp text-xl">Logs de moderação</h2>
+        <span className="font-mono text-[10px] text-accent">LIVE · 15s</span>
+      </header>
+      {isLoading ? (
+        <div className="p-6 flex justify-center">
+          <Loader2 className="h-4 w-4 animate-spin text-accent" />
+        </div>
+      ) : !data?.logs.length ? (
+        <div className="p-6 text-center font-mono text-xs text-muted-foreground">
+          nenhum log registrado
+        </div>
+      ) : (
+        <ul className="divide-y divide-border max-h-[400px] overflow-auto">
+          {data.logs.map((l: { id: string; level: string; reason: string; created_at: string }) => (
+            <li key={l.id} className="px-5 py-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <span
+                  className={cn(
+                    "font-mono text-[9px] tracking-widest px-1.5 py-0.5 rounded-sm border uppercase",
+                    l.level === "blocked"
+                      ? "border-destructive/40 text-destructive bg-destructive/10"
+                      : l.level === "flagged"
+                        ? "border-primary/40 text-primary bg-primary/10"
+                        : "border-accent/40 text-accent bg-accent/10",
+                  )}
+                >
+                  {l.level}
+                </span>
+                <span className="text-sm text-foreground/90 truncate">{l.reason}</span>
+              </div>
+              <span className="font-mono text-[10px] text-muted-foreground shrink-0">
+                {new Date(l.created_at).toLocaleString("pt-BR")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function FormFeedback({ err, ok, okMsg }: { err: string | null; ok: boolean; okMsg: string }) {
+  if (err) {
+    return (
+      <div className="flex items-start gap-2 border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive font-mono">
+        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+        <span>{err}</span>
+      </div>
+    );
+  }
+  if (ok) {
+    return (
+      <div className="flex items-center gap-2 border border-accent/40 bg-accent/10 px-3 py-2 text-xs text-accent font-mono">
+        <CheckCircle2 className="h-3.5 w-3.5" /> {okMsg}
+      </div>
+    );
+  }
+  return null;
 }
