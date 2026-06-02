@@ -1,13 +1,14 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, Clock, FileText, Network, Tag, Users } from "lucide-react";
-import { theories } from "@/lib/mock-data";
 import { CredibilityBadge } from "@/components/shadow/CredibilityBadge";
+import { getTheoryBySlug } from "@/lib/theories.functions";
+import type { SourceRow } from "@/lib/theories.functions";
 
 export const Route = createFileRoute("/theory/$slug")({
-  loader: ({ params }) => {
-    const theory = theories.find((t) => t.slug === params.slug);
+  loader: async ({ params }) => {
+    const { theory, sources } = await getTheoryBySlug({ data: { slug: params.slug } });
     if (!theory) throw notFound();
-    return { theory };
+    return { theory, sources };
   },
   head: ({ loaderData }) => {
     const t = loaderData?.theory;
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/theory/$slug")({
 });
 
 function TheoryPage() {
-  const { theory } = Route.useLoaderData();
+  const { theory, sources } = Route.useLoaderData();
 
   return (
     <article className="max-w-5xl mx-auto px-6 py-10">
@@ -97,7 +98,7 @@ function TheoryPage() {
             <div className="prose-invert max-w-none space-y-3 text-sm text-foreground/90 leading-relaxed">
               <p>
                 A documentação indexada — composta por {theory.documents}{" "}
-                arquivos catalogados — sugere padrões investigativos
+                arquivos catalogados ({theory.document_count} chunks indexados) — sugere padrões investigativos
                 consistentes. Os <span className="text-accent">memos internos</span>{" "}
                 recuperados via solicitação FOIA apresentam correspondência entre
                 operadores identificados na cadeia de comando.
@@ -142,8 +143,8 @@ function TheoryPage() {
               METADADOS
             </div>
             <Row k="codename" v={theory.codename} />
-            <Row k="período" v={theory.year} />
-            <Row k="documentos" v={String(theory.documents)} />
+            <Row k="período" v={theory.year ?? "—"} />
+            <Row k="documentos" v={String(theory.document_count)} />
             <Row k="entidades" v={String(theory.entities.length)} />
             <Row k="classificação" v={theory.classification} />
           </div>
@@ -168,11 +169,21 @@ function TheoryPage() {
             <div className="font-mono text-[10px] tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
               <FileText className="h-3 w-3" /> FONTES PRIMÁRIAS
             </div>
-            <ul className="space-y-2 text-xs text-foreground/80">
-              <li>· CIA Family Jewels Report (1977)</li>
-              <li>· FOIA Request #{Math.floor(Math.random() * 9000) + 1000}</li>
-              <li>· Congressional Inquiry Records</li>
-            </ul>
+            {sources.length === 0 ? (
+              <p className="font-mono text-xs text-muted-foreground">
+                [ sem fontes indexadas ]
+              </p>
+            ) : (
+              <ul className="space-y-2 text-xs text-foreground/80">
+                {sources.map((s: SourceRow) => (
+                  <li key={s.id}>
+                    · {s.title}
+                    {s.year ? ` (${s.year})` : ""}
+                    {s.agency ? ` — ${s.agency}` : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <Link

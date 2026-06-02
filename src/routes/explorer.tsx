@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { Search, Filter } from "lucide-react";
-import { theories, CREDIBILITY_LABEL, type Credibility } from "@/lib/mock-data";
+import { CREDIBILITY_LABEL, type Credibility } from "@/lib/mock-data";
+import { listTheories } from "@/lib/theories.functions";
 import { TheoryCard } from "@/components/shadow/TheoryCard";
 import { PageHeader } from "@/components/shadow/PageHeader";
 
@@ -24,13 +27,20 @@ export const Route = createFileRoute("/explorer")({
 });
 
 function ExplorerPage() {
+  const fetchTheories = useServerFn(listTheories);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["theories"],
+    queryFn: () => fetchTheories(),
+  });
+  const theories = data?.theories ?? [];
+
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [cred, setCred] = useState<Credibility | "all">("all");
 
   const categories = useMemo(
     () => Array.from(new Set(theories.map((t) => t.category))),
-    [],
+    [theories],
   );
 
   const filtered = theories.filter((t) => {
@@ -44,6 +54,19 @@ function ExplorerPage() {
     const matchCred = cred === "all" || t.credibility === cred;
     return matchQ && matchCat && matchCred;
   });
+
+  const mapped = filtered.map((t) => ({
+    slug: t.slug,
+    title: t.title,
+    codename: t.codename,
+    summary: t.summary,
+    tags: t.tags,
+    entities: t.entities,
+    credibility: t.credibility,
+    classification: t.classification,
+    documents: t.document_count,
+    year: t.year,
+  }));
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
@@ -122,19 +145,28 @@ function ExplorerPage() {
         <div>
           <div className="flex items-center justify-between mb-4 font-mono text-[11px] text-muted-foreground">
             <span>
-              {filtered.length} {filtered.length === 1 ? "resultado" : "resultados"}{" "}
-              encontrado{filtered.length === 1 ? "" : "s"}
+              {isLoading
+                ? "carregando arquivo..."
+                : `${mapped.length} ${mapped.length === 1 ? "resultado" : "resultados"} encontrado${mapped.length === 1 ? "" : "s"}`}
             </span>
             <span>SORT: relevância · DESC</span>
           </div>
 
-          {filtered.length === 0 ? (
+          {error ? (
+            <div className="border border-destructive/40 rounded-sm p-6 text-center font-mono text-sm text-destructive">
+              [ falha ao consultar o arquivo ]
+            </div>
+          ) : isLoading ? (
+            <div className="border border-dashed border-border rounded-sm p-12 text-center font-mono text-sm text-muted-foreground">
+              [ decriptando índice... ]
+            </div>
+          ) : mapped.length === 0 ? (
             <div className="border border-dashed border-border rounded-sm p-12 text-center font-mono text-sm text-muted-foreground">
               [ nenhum registro corresponde à query ]
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 gap-4">
-              {filtered.map((t, i) => (
+              {mapped.map((t, i) => (
                 <TheoryCard key={t.slug} theory={t} index={i} />
               ))}
             </div>

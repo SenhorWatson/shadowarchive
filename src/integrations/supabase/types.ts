@@ -14,16 +14,211 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      moderation_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          level: string
+          reason: string
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          level: string
+          reason: string
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          level?: string
+          reason?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sources: {
+        Row: {
+          agency: string | null
+          created_at: string
+          credibility: Database["public"]["Enums"]["credibility_level"]
+          description: string | null
+          id: string
+          source_type: string
+          theory_id: string
+          title: string
+          updated_at: string
+          url: string | null
+          year: string | null
+        }
+        Insert: {
+          agency?: string | null
+          created_at?: string
+          credibility?: Database["public"]["Enums"]["credibility_level"]
+          description?: string | null
+          id?: string
+          source_type: string
+          theory_id: string
+          title: string
+          updated_at?: string
+          url?: string | null
+          year?: string | null
+        }
+        Update: {
+          agency?: string | null
+          created_at?: string
+          credibility?: Database["public"]["Enums"]["credibility_level"]
+          description?: string | null
+          id?: string
+          source_type?: string
+          theory_id?: string
+          title?: string
+          updated_at?: string
+          url?: string | null
+          year?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sources_theory_id_fkey"
+            columns: ["theory_id"]
+            isOneToOne: false
+            referencedRelation: "theories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      theories: {
+        Row: {
+          category: string
+          classification: Database["public"]["Enums"]["classification_level"]
+          codename: string
+          created_at: string
+          created_by: string | null
+          credibility: Database["public"]["Enums"]["credibility_level"]
+          document_count: number
+          entities: string[]
+          id: string
+          slug: string
+          summary: string
+          tags: string[]
+          title: string
+          updated_at: string
+          year: string | null
+        }
+        Insert: {
+          category: string
+          classification?: Database["public"]["Enums"]["classification_level"]
+          codename: string
+          created_at?: string
+          created_by?: string | null
+          credibility?: Database["public"]["Enums"]["credibility_level"]
+          document_count?: number
+          entities?: string[]
+          id?: string
+          slug: string
+          summary: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          year?: string | null
+        }
+        Update: {
+          category?: string
+          classification?: Database["public"]["Enums"]["classification_level"]
+          codename?: string
+          created_at?: string
+          created_by?: string | null
+          credibility?: Database["public"]["Enums"]["credibility_level"]
+          document_count?: number
+          entities?: string[]
+          id?: string
+          slug?: string
+          summary?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          year?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "editor" | "viewer"
+      classification_level:
+        | "TOP SECRET"
+        | "CONFIDENTIAL"
+        | "DECLASSIFIED"
+        | "RESTRICTED"
+      credibility_level:
+        | "confirmed"
+        | "partial"
+        | "unverified"
+        | "speculative"
+        | "narrative"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +345,21 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "editor", "viewer"],
+      classification_level: [
+        "TOP SECRET",
+        "CONFIDENTIAL",
+        "DECLASSIFIED",
+        "RESTRICTED",
+      ],
+      credibility_level: [
+        "confirmed",
+        "partial",
+        "unverified",
+        "speculative",
+        "narrative",
+      ],
+    },
   },
 } as const
