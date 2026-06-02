@@ -17,6 +17,9 @@ export const Route = createFileRoute("/auth")({
 
 type Mode = "login" | "signup";
 
+const INPUT_CLS =
+  "w-full bg-background border border-border px-3 py-2 font-mono text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent transition-colors";
+
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("login");
@@ -132,7 +135,7 @@ function AuthPage() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="ghost.07"
-                  className="auth-input"
+                  className={INPUT_CLS}
                 />
               </Field>
             )}
@@ -143,7 +146,7 @@ function AuthPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="operador@arquivo.dev"
-                className="auth-input"
+                className={INPUT_CLS}
               />
             </Field>
             <Field label="SENHA">
@@ -154,7 +157,7 @@ function AuthPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="auth-input"
+                className={INPUT_CLS}
               />
             </Field>
 
