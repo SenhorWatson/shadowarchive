@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Sidebar } from "@/components/shadow/Sidebar";
 import { TopBar } from "@/components/shadow/TopBar";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -127,7 +128,32 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex min-h-screen">
+      <AuthSync />
+      <RootShellInner />
+    </QueryClientProvider>
+  );
+}
+
+function AuthSync() {
+  const router = useRouter();
+  const qc = useQueryClient();
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      router.invalidate();
+      qc.invalidateQueries();
+    });
+    return () => subscription.unsubscribe();
+  }, [router, qc]);
+  return null;
+}
+
+function RootShellInner() {
+  const pathname = useRouter().state.location.pathname;
+  if (pathname.startsWith("/auth")) {
+    return <Outlet />;
+  }
+  return (
+    <div className="flex min-h-screen">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar />
@@ -137,6 +163,5 @@ function RootComponent() {
           </main>
         </div>
       </div>
-    </QueryClientProvider>
   );
 }
