@@ -1,10 +1,23 @@
 import { Link } from "@tanstack/react-router";
 import { FileText, Users } from "lucide-react";
 import { motion } from "framer-motion";
-import type { Theory } from "@/lib/mock-data";
 import { CredibilityBadge } from "./CredibilityBadge";
+import type { Credibility } from "@/lib/mock-data";
 
-export function TheoryCard({ theory, index = 0 }: { theory: Theory; index?: number }) {
+export interface TheoryCardData {
+  slug: string;
+  title: string;
+  codename: string;
+  summary: string;
+  tags: string[];
+  entities: string[];
+  credibility: Credibility;
+  classification: string;
+  documents: number;
+  year: string | null;
+}
+
+export function TheoryCard({ theory, index = 0 }: { theory: TheoryCardData; index?: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
