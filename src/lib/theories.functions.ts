@@ -72,3 +72,15 @@ export const listAllSources = createServerFn({ method: "GET" }).handler(async ()
   if (error) throw new Error(error.message);
   return { sources: data ?? [] };
 });
+
+export const getSignedDocumentUrl = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z.object({ path: z.string().min(1).max(500) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { data: signed, error } = await supabaseAdmin.storage
+      .from("documents")
+      .createSignedUrl(data.path, 60 * 10);
+    if (error) throw new Error(error.message);
+    return { url: signed.signedUrl };
+  });
