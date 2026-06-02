@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Sparkles, FileText, AlertTriangle } from "lucide-react";
 import { theories } from "@/lib/mock-data";
 import { PageHeader } from "@/components/shadow/PageHeader";
+import { investigatorChat } from "@/lib/investigator.functions";
 
 export const Route = createFileRoute("/investigator")({
   head: () => ({
@@ -37,33 +39,21 @@ const SUGGESTIONS = [
   "Resuma a Unidade 731",
 ];
 
-function generateMockReply(prompt: string): Msg {
+function findRefs(prompt: string) {
   const q = prompt.toLowerCase();
-  const hits = theories.filter(
-    (t) =>
-      q.includes(t.slug.split("-")[0]) ||
-      t.tags.some((tag) => q.includes(tag.toLowerCase())) ||
-      t.title.toLowerCase().split(" ").some((w) => q.includes(w)),
-  );
-  const top = hits.slice(0, 3);
-
-  if (top.length === 0) {
-    return {
-      role: "ai",
-      content:
-        "Nenhum documento indexado corresponde diretamente à consulta. Refine a busca ou explore o catálogo. Lembrete: respondo apenas com base em material catalogado — nada é inferido externamente.",
-    };
-  }
-
-  const cite = top.map((t) => t.codename).join(", ");
-  return {
-    role: "ai",
-    content: `Com base em ${top.length} documento(s) indexado(s) (${cite}), há indícios documentais relevantes. ${top[0].summary} As fontes catalogadas sugerem possíveis conexões investigativas, porém esta plataforma não trata teorias como fatos absolutos — consulte as referências para validação independente.`,
-    refs: top.map((t) => ({ slug: t.slug, title: t.title })),
-  };
+  return theories
+    .filter(
+      (t) =>
+        q.includes(t.slug.split("-")[0]) ||
+        t.tags.some((tag) => q.includes(tag.toLowerCase())) ||
+        t.title.toLowerCase().split(" ").some((w) => w.length > 3 && q.includes(w)),
+    )
+    .slice(0, 3)
+    .map((t) => ({ slug: t.slug, title: t.title, summary: t.summary, codename: t.codename }));
 }
 
 function InvestigatorPage() {
+  const chatFn = useServerFn(investigatorChat);
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "ai",
@@ -81,14 +71,34 @@ function InvestigatorPage() {
 
   const send = (text: string) => {
     const t = text.trim();
-    if (!t) return;
-    setMessages((m) => [...m, { role: "user", content: t }]);
+    if (!t || loading) return;
+    const refs = findRefs(t);
+    const context = refs.length
+      ? refs.map((r) => `- ${r.codename} (${r.title}): ${r.summary}`).join("\n")
+      : undefined;
+    const nextMsgs: Msg[] = [...messages, { role: "user", content: t }];
+    setMessages(nextMsgs);
     setInput("");
     setLoading(true);
-    setTimeout(() => {
-      setMessages((m) => [...m, generateMockReply(t)]);
-      setLoading(false);
-    }, 900);
+    const payload = nextMsgs.map((m) => ({
+      role: m.role === "ai" ? ("assistant" as const) : ("user" as const),
+      content: m.content,
+    }));
+    chatFn({ data: { messages: payload, context } })
+      .then((r) => {
+        setMessages((m) => [
+          ...m,
+          { role: "ai", content: r.reply, refs: refs.length ? refs : undefined },
+        ]);
+      })
+      .catch((e) => {
+        console.error(e);
+        setMessages((m) => [
+          ...m,
+          { role: "ai", content: "// FALHA DE TRANSMISSÃO\n\n" + (e?.message ?? "Erro desconhecido") },
+        ]);
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
