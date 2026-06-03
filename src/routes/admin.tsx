@@ -655,9 +655,12 @@ function TheoryList({ isAdmin }: { isAdmin: boolean }) {
   const mutation = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => {
+      toast.success("Teoria removida.");
       qc.invalidateQueries({ queryKey: ["theories"] });
     },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro"),
   });
+  const [editing, setEditing] = useState<TheoryEditValues | null>(null);
 
   return (
     <section className="border border-border bg-card rounded-sm">
@@ -688,19 +691,38 @@ function TheoryList({ isAdmin }: { isAdmin: boolean }) {
                   {t.document_count} docs · {t.credibility}
                 </div>
               </div>
-              {isAdmin && (
+              <div className="flex items-center gap-1 shrink-0">
                 <button
-                  onClick={() => {
-                    if (confirm(`Remover "${t.codename}"? Fontes vinculadas permanecem.`)) {
-                      mutation.mutate(t.id);
-                    }
-                  }}
-                  disabled={mutation.isPending}
-                  className="shrink-0 inline-flex items-center gap-1 border border-destructive/40 text-destructive px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:bg-destructive/10 disabled:opacity-50"
+                  onClick={() =>
+                    setEditing({
+                      id: t.id,
+                      title: t.title,
+                      codename: t.codename,
+                      summary: t.summary,
+                      credibility: t.credibility,
+                      classification: t.classification,
+                      year: t.year ?? "",
+                      tags: (t.tags ?? []).join(", "),
+                    })
+                  }
+                  className="inline-flex items-center gap-1 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:border-accent hover:text-accent"
                 >
-                  <Trash2 className="h-3 w-3" /> Apagar
+                  <Pencil className="h-3 w-3" /> Editar
                 </button>
-              )}
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`Remover "${t.codename}"? Fontes vinculadas permanecem.`)) {
+                        mutation.mutate(t.id);
+                      }
+                    }}
+                    disabled={mutation.isPending}
+                    className="inline-flex items-center gap-1 border border-destructive/40 text-destructive px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:bg-destructive/10 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3 w-3" /> Apagar
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -709,6 +731,12 @@ function TheoryList({ isAdmin }: { isAdmin: boolean }) {
         <div className="px-5 py-2 text-xs text-destructive font-mono border-t border-destructive/30">
           {(mutation.error as Error).message}
         </div>
+      )}
+      {editing && (
+        <EditTheoryDialog
+          values={editing}
+          onClose={() => setEditing(null)}
+        />
       )}
     </section>
   );
