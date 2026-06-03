@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VaultRouteImport } from './routes/vault'
 import { Route as SourcesRouteImport } from './routes/sources'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as InvestigatorRouteImport } from './routes/investigator'
 import { Route as GraphRouteImport } from './routes/graph'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -29,6 +32,16 @@ const SourcesRoute = SourcesRouteImport.update({
   path: '/sources',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InvestigatorRoute = InvestigatorRouteImport.update({
   id: '/investigator',
   path: '/investigator',
@@ -37,6 +50,11 @@ const InvestigatorRoute = InvestigatorRouteImport.update({
 const GraphRoute = GraphRouteImport.update({
   id: '/graph',
   path: '/graph',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExplorerRoute = ExplorerRouteImport.update({
@@ -70,8 +88,11 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/explorer': typeof ExplorerRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
+  '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sources': typeof SourcesRoute
   '/vault': typeof VaultRoute
   '/theory/$slug': typeof TheorySlugRoute
@@ -81,8 +102,11 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/explorer': typeof ExplorerRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
+  '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sources': typeof SourcesRoute
   '/vault': typeof VaultRoute
   '/theory/$slug': typeof TheorySlugRoute
@@ -93,8 +117,11 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/explorer': typeof ExplorerRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
+  '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sources': typeof SourcesRoute
   '/vault': typeof VaultRoute
   '/theory/$slug': typeof TheorySlugRoute
@@ -106,8 +133,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/explorer'
+    | '/forgot-password'
     | '/graph'
     | '/investigator'
+    | '/profile'
+    | '/reset-password'
     | '/sources'
     | '/vault'
     | '/theory/$slug'
@@ -117,8 +147,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/explorer'
+    | '/forgot-password'
     | '/graph'
     | '/investigator'
+    | '/profile'
+    | '/reset-password'
     | '/sources'
     | '/vault'
     | '/theory/$slug'
@@ -128,8 +161,11 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/explorer'
+    | '/forgot-password'
     | '/graph'
     | '/investigator'
+    | '/profile'
+    | '/reset-password'
     | '/sources'
     | '/vault'
     | '/theory/$slug'
@@ -140,8 +176,11 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   ExplorerRoute: typeof ExplorerRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   GraphRoute: typeof GraphRoute
   InvestigatorRoute: typeof InvestigatorRoute
+  ProfileRoute: typeof ProfileRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SourcesRoute: typeof SourcesRoute
   VaultRoute: typeof VaultRoute
   TheorySlugRoute: typeof TheorySlugRoute
@@ -163,6 +202,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SourcesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/investigator': {
       id: '/investigator'
       path: '/investigator'
@@ -175,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/graph'
       fullPath: '/graph'
       preLoaderRoute: typeof GraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explorer': {
@@ -220,8 +280,11 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   ExplorerRoute: ExplorerRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   GraphRoute: GraphRoute,
   InvestigatorRoute: InvestigatorRoute,
+  ProfileRoute: ProfileRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SourcesRoute: SourcesRoute,
   VaultRoute: VaultRoute,
   TheorySlugRoute: TheorySlugRoute,

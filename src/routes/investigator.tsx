@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Sparkles, FileText, AlertTriangle } from "lucide-react";
-import { theories } from "@/lib/mock-data";
 import { PageHeader } from "@/components/shadow/PageHeader";
 import { investigatorChat } from "@/lib/investigator.functions";
+import { searchTheoryContext } from "@/lib/theories.functions";
 
 export const Route = createFileRoute("/investigator")({
   head: () => ({
@@ -39,21 +39,9 @@ const SUGGESTIONS = [
   "Resuma a Unidade 731",
 ];
 
-function findRefs(prompt: string) {
-  const q = prompt.toLowerCase();
-  return theories
-    .filter(
-      (t) =>
-        q.includes(t.slug.split("-")[0]) ||
-        t.tags.some((tag) => q.includes(tag.toLowerCase())) ||
-        t.title.toLowerCase().split(" ").some((w) => w.length > 3 && q.includes(w)),
-    )
-    .slice(0, 3)
-    .map((t) => ({ slug: t.slug, title: t.title, summary: t.summary, codename: t.codename }));
-}
-
 function InvestigatorPage() {
   const chatFn = useServerFn(investigatorChat);
+  const searchFn = useServerFn(searchTheoryContext);
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "ai",
@@ -69,36 +57,46 @@ function InvestigatorPage() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     const t = text.trim();
     if (!t || loading) return;
-    const refs = findRefs(t);
-    const context = refs.length
-      ? refs.map((r) => `- ${r.codename} (${r.title}): ${r.summary}`).join("\n")
-      : undefined;
     const nextMsgs: Msg[] = [...messages, { role: "user", content: t }];
     setMessages(nextMsgs);
     setInput("");
     setLoading(true);
-    const payload = nextMsgs.map((m) => ({
-      role: m.role === "ai" ? ("assistant" as const) : ("user" as const),
-      content: m.content,
-    }));
-    chatFn({ data: { messages: payload, context } })
-      .then((r) => {
-        setMessages((m) => [
-          ...m,
-          { role: "ai", content: r.reply, refs: refs.length ? refs : undefined },
-        ]);
-      })
-      .catch((e) => {
-        console.error(e);
-        setMessages((m) => [
-          ...m,
-          { role: "ai", content: "// FALHA DE TRANSMISSÃO\n\n" + (e?.message ?? "Erro desconhecido") },
-        ]);
-      })
-      .finally(() => setLoading(false));
+    try {
+      const search = await searchFn({ data: { query: t, limit: 4 } });
+      const matches = search.matches ?? [];
+      const context = matches.length
+        ? matches
+            .map(
+              (m) =>
+                `- ${m.codename} (${m.title}) [${m.credibility}${m.year ? `, ${m.year}` : ""}]: ${m.summary}` +
+                (m.sources.length
+                  ? `\n  Fontes: ${m.sources.map((s) => `${s.title}${s.agency ? ` (${s.agency})` : ""}${s.year ? ` ${s.year}` : ""}`).join("; ")}`
+                  : ""),
+            )
+            .join("\n")
+        : undefined;
+      const refs = matches.map((m) => ({ slug: m.slug, title: m.title }));
+      const payload = nextMsgs.map((m) => ({
+        role: m.role === "ai" ? ("assistant" as const) : ("user" as const),
+        content: m.content,
+      }));
+      const r = await chatFn({ data: { messages: payload, context } });
+      setMessages((m) => [
+        ...m,
+        { role: "ai", content: r.reply, refs: refs.length ? refs : undefined },
+      ]);
+    } catch (e) {
+      console.error(e);
+      setMessages((m) => [
+        ...m,
+        { role: "ai", content: "// FALHA DE TRANSMISSÃO\n\n" + (e instanceof Error ? e.message : "Erro desconhecido") },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

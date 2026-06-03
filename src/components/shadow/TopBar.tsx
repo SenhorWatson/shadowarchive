@@ -1,4 +1,4 @@
-import { Lock, Search, LogIn, LogOut, Loader2 } from "lucide-react";
+import { Lock, Search, LogIn, LogOut, Loader2, UserCog } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,12 +32,16 @@ export function TopBar() {
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : user ? (
             <>
-              <span className="hidden md:inline">
+              <Link
+                to="/profile"
+                className="hidden md:inline-flex items-center gap-1 hover:text-foreground transition-colors"
+              >
+                <UserCog className="h-3 w-3" />
                 OPERATOR:{" "}
                 <span className="text-foreground">
                   {(user.user_metadata?.display_name as string) ?? user.email?.split("@")[0]}
                 </span>
-              </span>
+              </Link>
               <button
                 onClick={() => supabase.auth.signOut()}
                 className="inline-flex items-center gap-1 border border-border px-2 py-0.5 hover:text-foreground hover:border-accent transition-colors"

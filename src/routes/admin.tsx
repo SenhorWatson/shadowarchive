@@ -12,7 +12,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   Trash2,
+  Pencil,
+  Users,
+  X,
+  ShieldCheck,
 } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/shadow/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +30,11 @@ import {
   listModerationLogs,
   deleteTheory,
   deleteSource,
+  updateTheory,
+  updateSource,
+  listUsersAndRoles,
+  setUserRole,
+  removeUserRole,
 } from "@/lib/admin.functions";
 import { listTheories, listAllSources } from "@/lib/theories.functions";
 import { cn } from "@/lib/utils";
@@ -187,6 +197,7 @@ function AdminConsole({ roles }: { roles: string[] }) {
         <SourceList isAdmin={isAdmin} />
       </div>
 
+      {isAdmin && <RolesPanel />}
       {isAdmin && <ModerationLogs />}
     </div>
   );
@@ -644,9 +655,12 @@ function TheoryList({ isAdmin }: { isAdmin: boolean }) {
   const mutation = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => {
+      toast.success("Teoria removida.");
       qc.invalidateQueries({ queryKey: ["theories"] });
     },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro"),
   });
+  const [editing, setEditing] = useState<TheoryEditValues | null>(null);
 
   return (
     <section className="border border-border bg-card rounded-sm">
@@ -677,19 +691,38 @@ function TheoryList({ isAdmin }: { isAdmin: boolean }) {
                   {t.document_count} docs · {t.credibility}
                 </div>
               </div>
-              {isAdmin && (
+              <div className="flex items-center gap-1 shrink-0">
                 <button
-                  onClick={() => {
-                    if (confirm(`Remover "${t.codename}"? Fontes vinculadas permanecem.`)) {
-                      mutation.mutate(t.id);
-                    }
-                  }}
-                  disabled={mutation.isPending}
-                  className="shrink-0 inline-flex items-center gap-1 border border-destructive/40 text-destructive px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:bg-destructive/10 disabled:opacity-50"
+                  onClick={() =>
+                    setEditing({
+                      id: t.id,
+                      title: t.title,
+                      codename: t.codename,
+                      summary: t.summary,
+                      credibility: t.credibility,
+                      classification: t.classification,
+                      year: t.year ?? "",
+                      tags: (t.tags ?? []).join(", "),
+                    })
+                  }
+                  className="inline-flex items-center gap-1 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:border-accent hover:text-accent"
                 >
-                  <Trash2 className="h-3 w-3" /> Apagar
+                  <Pencil className="h-3 w-3" /> Editar
                 </button>
-              )}
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`Remover "${t.codename}"? Fontes vinculadas permanecem.`)) {
+                        mutation.mutate(t.id);
+                      }
+                    }}
+                    disabled={mutation.isPending}
+                    className="inline-flex items-center gap-1 border border-destructive/40 text-destructive px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:bg-destructive/10 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3 w-3" /> Apagar
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -698,6 +731,12 @@ function TheoryList({ isAdmin }: { isAdmin: boolean }) {
         <div className="px-5 py-2 text-xs text-destructive font-mono border-t border-destructive/30">
           {(mutation.error as Error).message}
         </div>
+      )}
+      {editing && (
+        <EditTheoryDialog
+          values={editing}
+          onClose={() => setEditing(null)}
+        />
       )}
     </section>
   );
@@ -714,10 +753,13 @@ function SourceList({ isAdmin }: { isAdmin: boolean }) {
   const mutation = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => {
+      toast.success("Fonte removida.");
       qc.invalidateQueries({ queryKey: ["sources"] });
       qc.invalidateQueries({ queryKey: ["theories"] });
     },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro"),
   });
+  const [editing, setEditing] = useState<SourceEditValues | null>(null);
 
   return (
     <section className="border border-border bg-card rounded-sm">
@@ -737,7 +779,7 @@ function SourceList({ isAdmin }: { isAdmin: boolean }) {
         </div>
       ) : (
         <ul className="divide-y divide-border max-h-[420px] overflow-auto">
-          {data.sources.map((s: { id: string; title: string; source_type: string; agency: string | null; year: string | null; file_path: string | null; theories?: { codename: string } | null }) => (
+          {data.sources.map((s: { id: string; title: string; source_type: string; agency: string | null; year: string | null; url: string | null; description: string | null; file_path: string | null; credibility: "confirmed" | "partial" | "unverified" | "speculative" | "narrative"; theories?: { codename: string } | null }) => (
             <li key={s.id} className="px-5 py-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="font-mono text-[10px] text-accent uppercase tracking-widest">
@@ -749,19 +791,38 @@ function SourceList({ isAdmin }: { isAdmin: boolean }) {
                   {s.agency ?? "—"} · {s.year ?? "—"}
                 </div>
               </div>
-              {isAdmin && (
+              <div className="flex items-center gap-1 shrink-0">
                 <button
-                  onClick={() => {
-                    if (confirm(`Remover fonte "${s.title}"?`)) {
-                      mutation.mutate(s.id);
-                    }
-                  }}
-                  disabled={mutation.isPending}
-                  className="shrink-0 inline-flex items-center gap-1 border border-destructive/40 text-destructive px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:bg-destructive/10 disabled:opacity-50"
+                  onClick={() =>
+                    setEditing({
+                      id: s.id,
+                      title: s.title,
+                      source_type: s.source_type,
+                      agency: s.agency ?? "",
+                      year: s.year ?? "",
+                      url: s.url ?? "",
+                      description: s.description ?? "",
+                      credibility: s.credibility,
+                    })
+                  }
+                  className="inline-flex items-center gap-1 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:border-accent hover:text-accent"
                 >
-                  <Trash2 className="h-3 w-3" /> Apagar
+                  <Pencil className="h-3 w-3" /> Editar
                 </button>
-              )}
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`Remover fonte "${s.title}"?`)) {
+                        mutation.mutate(s.id);
+                      }
+                    }}
+                    disabled={mutation.isPending}
+                    className="inline-flex items-center gap-1 border border-destructive/40 text-destructive px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:bg-destructive/10 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3 w-3" /> Apagar
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -770,6 +831,224 @@ function SourceList({ isAdmin }: { isAdmin: boolean }) {
         <div className="px-5 py-2 text-xs text-destructive font-mono border-t border-destructive/30">
           {(mutation.error as Error).message}
         </div>
+      )}
+      {editing && (
+        <EditSourceDialog values={editing} onClose={() => setEditing(null)} />
+      )}
+    </section>
+  );
+}
+
+// ---------- EDIT DIALOGS ----------
+type Credibility = "confirmed" | "partial" | "unverified" | "speculative" | "narrative";
+type Classification = "TOP SECRET" | "CONFIDENTIAL" | "DECLASSIFIED" | "RESTRICTED";
+
+type TheoryEditValues = {
+  id: string;
+  title: string;
+  codename: string;
+  summary: string;
+  credibility: Credibility;
+  classification: Classification;
+  year: string;
+  tags: string;
+};
+
+type SourceEditValues = {
+  id: string;
+  title: string;
+  source_type: string;
+  agency: string;
+  year: string;
+  url: string;
+  description: string;
+  credibility: Credibility;
+};
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-lg border border-border bg-card rounded-sm">
+        <header className="border-b border-border px-5 py-3 flex items-center justify-between">
+          <h3 className="font-stamp text-lg">{title}</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </header>
+        <div className="p-5 max-h-[80vh] overflow-auto">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function EditTheoryDialog({ values, onClose }: { values: TheoryEditValues; onClose: () => void }) {
+  const qc = useQueryClient();
+  const update = useServerFn(updateTheory);
+  const [form, setForm] = useState(values);
+  const mut = useMutation({
+    mutationFn: () =>
+      update({
+        data: {
+          id: form.id,
+          title: form.title,
+          codename: form.codename,
+          summary: form.summary,
+          credibility: form.credibility,
+          classification: form.classification,
+          year: form.year || null,
+          tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Teoria atualizada.");
+      qc.invalidateQueries({ queryKey: ["theories"] });
+      onClose();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro"),
+  });
+  return (
+    <Modal title={`Editar ${form.codename}`} onClose={onClose}>
+      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}>
+        <div><label className={LABEL}>CODENAME</label><input className={INPUT} value={form.codename} onChange={(e) => setForm({ ...form, codename: e.target.value })} /></div>
+        <div><label className={LABEL}>TÍTULO</label><input className={INPUT} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+        <div><label className={LABEL}>SUMÁRIO</label><textarea className={cn(INPUT, "min-h-[90px]")} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} /></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={LABEL}>ANO</label><input className={INPUT} value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} /></div>
+          <div><label className={LABEL}>CREDIBILIDADE</label>
+            <select className={INPUT} value={form.credibility} onChange={(e) => setForm({ ...form, credibility: e.target.value as Credibility })}>
+              {["confirmed", "partial", "unverified", "speculative", "narrative"].map((c) => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+        <div><label className={LABEL}>CLASSIFICAÇÃO</label>
+          <select className={INPUT} value={form.classification} onChange={(e) => setForm({ ...form, classification: e.target.value as Classification })}>
+            {["TOP SECRET", "CONFIDENTIAL", "DECLASSIFIED", "RESTRICTED"].map((c) => <option key={c}>{c}</option>)}
+          </select>
+        </div>
+        <div><label className={LABEL}>TAGS (vírgula)</label><input className={INPUT} value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></div>
+        <button disabled={mut.isPending} type="submit" className="w-full inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground font-mono text-sm uppercase tracking-widest py-2.5 hover:bg-primary/90 disabled:opacity-50">
+          {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Salvar
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
+function EditSourceDialog({ values, onClose }: { values: SourceEditValues; onClose: () => void }) {
+  const qc = useQueryClient();
+  const update = useServerFn(updateSource);
+  const [form, setForm] = useState(values);
+  const mut = useMutation({
+    mutationFn: () =>
+      update({
+        data: {
+          id: form.id,
+          title: form.title,
+          source_type: form.source_type,
+          agency: form.agency || null,
+          year: form.year || null,
+          url: form.url || null,
+          description: form.description || null,
+          credibility: form.credibility,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Fonte atualizada.");
+      qc.invalidateQueries({ queryKey: ["sources"] });
+      onClose();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro"),
+  });
+  return (
+    <Modal title="Editar fonte" onClose={onClose}>
+      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}>
+        <div><label className={LABEL}>TÍTULO</label><input className={INPUT} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={LABEL}>TIPO</label><input className={INPUT} value={form.source_type} onChange={(e) => setForm({ ...form, source_type: e.target.value })} /></div>
+          <div><label className={LABEL}>AGÊNCIA</label><input className={INPUT} value={form.agency} onChange={(e) => setForm({ ...form, agency: e.target.value })} /></div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={LABEL}>ANO</label><input className={INPUT} value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} /></div>
+          <div><label className={LABEL}>CREDIBILIDADE</label>
+            <select className={INPUT} value={form.credibility} onChange={(e) => setForm({ ...form, credibility: e.target.value as Credibility })}>
+              {["confirmed", "partial", "unverified", "speculative", "narrative"].map((c) => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+        <div><label className={LABEL}>URL</label><input type="url" className={INPUT} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} /></div>
+        <div><label className={LABEL}>DESCRIÇÃO</label><textarea className={cn(INPUT, "min-h-[80px]")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+        <button disabled={mut.isPending} type="submit" className="w-full inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground font-mono text-sm uppercase tracking-widest py-2.5 hover:bg-primary/90 disabled:opacity-50">
+          {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Salvar
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
+// ---------- ROLES PANEL ----------
+function RolesPanel() {
+  const qc = useQueryClient();
+  const fetchUsers = useServerFn(listUsersAndRoles);
+  const setRole = useServerFn(setUserRole);
+  const removeRole = useServerFn(removeUserRole);
+  const { data, isLoading } = useQuery({
+    queryKey: ["users-roles"],
+    queryFn: () => fetchUsers(),
+  });
+  const grant = useMutation({
+    mutationFn: (v: { user_id: string; role: "admin" | "editor" | "viewer" }) => setRole({ data: v }),
+    onSuccess: () => { toast.success("Papel atribuído."); qc.invalidateQueries({ queryKey: ["users-roles"] }); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro"),
+  });
+  const revoke = useMutation({
+    mutationFn: (v: { user_id: string; role: "admin" | "editor" | "viewer" }) => removeRole({ data: v }),
+    onSuccess: () => { toast.success("Papel removido."); qc.invalidateQueries({ queryKey: ["users-roles"] }); },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro"),
+  });
+
+  return (
+    <section className="border border-border bg-card rounded-sm">
+      <header className="border-b border-border px-5 py-3 flex items-center justify-between">
+        <h2 className="font-stamp text-xl flex items-center gap-2"><Users className="h-4 w-4" /> Usuários e papéis</h2>
+        <span className="font-mono text-[10px] text-muted-foreground">{data?.users.length ?? 0} operadores</span>
+      </header>
+      {isLoading ? (
+        <div className="p-6 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-accent" /></div>
+      ) : (
+        <ul className="divide-y divide-border max-h-[420px] overflow-auto">
+          {data?.users.map((u) => (
+            <li key={u.id} className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-sm truncate">{u.display_name ?? u.email}</div>
+                <div className="font-mono text-[10px] text-muted-foreground truncate">{u.email}</div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {u.roles.length ? u.roles.map((r) => (
+                    <span key={r} className="inline-flex items-center gap-1 border border-accent/40 text-accent px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest bg-accent/5">
+                      <ShieldCheck className="h-2.5 w-2.5" />{r}
+                      <button
+                        onClick={() => revoke.mutate({ user_id: u.id, role: r as "admin" | "editor" | "viewer" })}
+                        className="ml-1 hover:text-destructive"
+                        title="Remover papel"
+                      ><X className="h-2.5 w-2.5" /></button>
+                    </span>
+                  )) : <span className="font-mono text-[10px] text-muted-foreground">sem papéis</span>}
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                {(["viewer", "editor", "admin"] as const).map((r) => (
+                  <button
+                    key={r}
+                    disabled={u.roles.includes(r) || grant.isPending}
+                    onClick={() => grant.mutate({ user_id: u.id, role: r })}
+                    className="border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:border-accent hover:text-accent disabled:opacity-30 disabled:hover:border-border disabled:hover:text-current"
+                  >
+                    + {r}
+                  </button>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
