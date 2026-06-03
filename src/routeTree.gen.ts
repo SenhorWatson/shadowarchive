@@ -13,6 +13,7 @@ import { Route as VaultRouteImport } from './routes/vault'
 import { Route as SourcesRouteImport } from './routes/sources'
 import { Route as InvestigatorRouteImport } from './routes/investigator'
 import { Route as GraphRouteImport } from './routes/graph'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -37,6 +38,11 @@ const InvestigatorRoute = InvestigatorRouteImport.update({
 const GraphRoute = GraphRouteImport.update({
   id: '/graph',
   path: '/graph',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExplorerRoute = ExplorerRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/explorer': typeof ExplorerRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
   '/sources': typeof SourcesRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/explorer': typeof ExplorerRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
   '/sources': typeof SourcesRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/explorer': typeof ExplorerRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
   '/sources': typeof SourcesRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/explorer'
+    | '/forgot-password'
     | '/graph'
     | '/investigator'
     | '/sources'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/explorer'
+    | '/forgot-password'
     | '/graph'
     | '/investigator'
     | '/sources'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/explorer'
+    | '/forgot-password'
     | '/graph'
     | '/investigator'
     | '/sources'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   ExplorerRoute: typeof ExplorerRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   GraphRoute: typeof GraphRoute
   InvestigatorRoute: typeof InvestigatorRoute
   SourcesRoute: typeof SourcesRoute
@@ -175,6 +188,13 @@ declare module '@tanstack/react-router' {
       path: '/graph'
       fullPath: '/graph'
       preLoaderRoute: typeof GraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explorer': {
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   ExplorerRoute: ExplorerRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   GraphRoute: GraphRoute,
   InvestigatorRoute: InvestigatorRoute,
   SourcesRoute: SourcesRoute,
@@ -229,3 +250,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
