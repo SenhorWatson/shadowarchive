@@ -181,6 +181,14 @@ function AuthPage() {
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
               {mode === "login" ? "Acessar arquivo" : "Solicitar acesso"}
             </button>
+            {mode === "login" && (
+              <Link
+                to="/forgot-password"
+                className="block text-center font-mono text-[11px] text-muted-foreground hover:text-accent uppercase tracking-widest"
+              >
+                Esqueceu a senha?
+              </Link>
+            )}
           </form>
 
           <div className="px-5 pb-5 space-y-2">
