@@ -117,6 +117,37 @@ export const deleteTheory = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const deleteSource = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const roles = await assertEditor(context.userId);
+    if (!roles.includes("admin")) throw new Error("Apenas admin pode remover fontes.");
+    const { data: src } = await supabaseAdmin
+      .from("sources")
+      .select("theory_id, file_path")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (src?.file_path) {
+      await supabaseAdmin.storage.from("documents").remove([src.file_path]);
+    }
+    const { error } = await supabaseAdmin.from("sources").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    if (src?.theory_id) {
+      await supabaseAdmin
+        .from("theories")
+        .update({ document_count: await sourceCount(src.theory_id) })
+        .eq("id", src.theory_id);
+    }
+    await supabaseAdmin.from("moderation_logs").insert({
+      level: "approved",
+      reason: `Fonte removida: ${data.id}`,
+      user_id: context.userId,
+      context: { source_id: data.id },
+    });
+    return { ok: true };
+  });
+
 const sourceSchema = z.object({
   theory_id: z.string().uuid(),
   title: z.string().min(3).max(200),

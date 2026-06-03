@@ -11,6 +11,7 @@ import {
   Crown,
   AlertTriangle,
   CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/shadow/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,8 +23,10 @@ import {
   createSource,
   createSignedUpload,
   listModerationLogs,
+  deleteTheory,
+  deleteSource,
 } from "@/lib/admin.functions";
-import { listTheories } from "@/lib/theories.functions";
+import { listTheories, listAllSources } from "@/lib/theories.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
@@ -177,6 +180,11 @@ function AdminConsole({ roles }: { roles: string[] }) {
       <div className="grid lg:grid-cols-2 gap-6">
         <TheoryForm />
         <SourceForm />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <TheoryList isAdmin={isAdmin} />
+        <SourceList isAdmin={isAdmin} />
       </div>
 
       {isAdmin && <ModerationLogs />}
@@ -623,4 +631,146 @@ function FormFeedback({ err, ok, okMsg }: { err: string | null; ok: boolean; okM
     );
   }
   return null;
+}
+
+function TheoryList({ isAdmin }: { isAdmin: boolean }) {
+  const qc = useQueryClient();
+  const fetchTheories = useServerFn(listTheories);
+  const del = useServerFn(deleteTheory);
+  const { data, isLoading } = useQuery({
+    queryKey: ["theories"],
+    queryFn: () => fetchTheories(),
+  });
+  const mutation = useMutation({
+    mutationFn: (id: string) => del({ data: { id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["theories"] });
+    },
+  });
+
+  return (
+    <section className="border border-border bg-card rounded-sm">
+      <header className="border-b border-border px-5 py-3 flex items-center justify-between">
+        <h2 className="font-stamp text-xl">Teorias cadastradas</h2>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {data?.theories.length ?? 0} registros
+        </span>
+      </header>
+      {isLoading ? (
+        <div className="p-6 flex justify-center">
+          <Loader2 className="h-4 w-4 animate-spin text-accent" />
+        </div>
+      ) : !data?.theories.length ? (
+        <div className="p-6 text-center font-mono text-xs text-muted-foreground">
+          nenhuma teoria
+        </div>
+      ) : (
+        <ul className="divide-y divide-border max-h-[420px] overflow-auto">
+          {data.theories.map((t) => (
+            <li key={t.id} className="px-5 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-mono text-[10px] text-accent uppercase tracking-widest">
+                  {t.codename}
+                </div>
+                <div className="text-sm truncate">{t.title}</div>
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  {t.document_count} docs · {t.credibility}
+                </div>
+              </div>
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    if (confirm(`Remover "${t.codename}"? Fontes vinculadas permanecem.`)) {
+                      mutation.mutate(t.id);
+                    }
+                  }}
+                  disabled={mutation.isPending}
+                  className="shrink-0 inline-flex items-center gap-1 border border-destructive/40 text-destructive px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:bg-destructive/10 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3 w-3" /> Apagar
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {mutation.error && (
+        <div className="px-5 py-2 text-xs text-destructive font-mono border-t border-destructive/30">
+          {(mutation.error as Error).message}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SourceList({ isAdmin }: { isAdmin: boolean }) {
+  const qc = useQueryClient();
+  const fetchSources = useServerFn(listAllSources);
+  const del = useServerFn(deleteSource);
+  const { data, isLoading } = useQuery({
+    queryKey: ["sources"],
+    queryFn: () => fetchSources(),
+  });
+  const mutation = useMutation({
+    mutationFn: (id: string) => del({ data: { id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sources"] });
+      qc.invalidateQueries({ queryKey: ["theories"] });
+    },
+  });
+
+  return (
+    <section className="border border-border bg-card rounded-sm">
+      <header className="border-b border-border px-5 py-3 flex items-center justify-between">
+        <h2 className="font-stamp text-xl">Fontes cadastradas</h2>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {data?.sources.length ?? 0} registros
+        </span>
+      </header>
+      {isLoading ? (
+        <div className="p-6 flex justify-center">
+          <Loader2 className="h-4 w-4 animate-spin text-accent" />
+        </div>
+      ) : !data?.sources.length ? (
+        <div className="p-6 text-center font-mono text-xs text-muted-foreground">
+          nenhuma fonte
+        </div>
+      ) : (
+        <ul className="divide-y divide-border max-h-[420px] overflow-auto">
+          {data.sources.map((s: { id: string; title: string; source_type: string; agency: string | null; year: string | null; file_path: string | null; theories?: { codename: string } | null }) => (
+            <li key={s.id} className="px-5 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-mono text-[10px] text-accent uppercase tracking-widest">
+                  {s.theories?.codename ?? "—"} · {s.source_type}
+                  {s.file_path && <span className="ml-1 text-primary">[file]</span>}
+                </div>
+                <div className="text-sm truncate">{s.title}</div>
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  {s.agency ?? "—"} · {s.year ?? "—"}
+                </div>
+              </div>
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    if (confirm(`Remover fonte "${s.title}"?`)) {
+                      mutation.mutate(s.id);
+                    }
+                  }}
+                  disabled={mutation.isPending}
+                  className="shrink-0 inline-flex items-center gap-1 border border-destructive/40 text-destructive px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:bg-destructive/10 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3 w-3" /> Apagar
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {mutation.error && (
+        <div className="px-5 py-2 text-xs text-destructive font-mono border-t border-destructive/30">
+          {(mutation.error as Error).message}
+        </div>
+      )}
+    </section>
+  );
 }
