@@ -12,7 +12,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   Trash2,
+  Pencil,
+  Users,
+  X,
+  ShieldCheck,
 } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/shadow/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +30,11 @@ import {
   listModerationLogs,
   deleteTheory,
   deleteSource,
+  updateTheory,
+  updateSource,
+  listUsersAndRoles,
+  setUserRole,
+  removeUserRole,
 } from "@/lib/admin.functions";
 import { listTheories, listAllSources } from "@/lib/theories.functions";
 import { cn } from "@/lib/utils";
@@ -187,6 +197,7 @@ function AdminConsole({ roles }: { roles: string[] }) {
         <SourceList isAdmin={isAdmin} />
       </div>
 
+      {isAdmin && <RolesPanel />}
       {isAdmin && <ModerationLogs />}
     </div>
   );
