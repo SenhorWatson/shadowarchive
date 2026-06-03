@@ -206,14 +206,165 @@ export const createSignedUpload = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
       filename: z.string().min(1).max(200).regex(/^[A-Za-z0-9._-]+$/),
+      size: z.number().int().positive().max(20 * 1024 * 1024),
+      mime: z.string().min(1).max(120),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertEditor(context.userId);
+    const ALLOWED_MIME = [
+      "application/pdf",
+      "text/plain",
+      "text/markdown",
+      "image/png",
+      "image/jpeg",
+      "image/webp",
+      "application/json",
+    ];
+    if (!ALLOWED_MIME.includes(data.mime)) {
+      throw new Error(`Tipo de arquivo não permitido (${data.mime}).`);
+    }
+    const ALLOWED_EXT = /\.(pdf|txt|md|png|jpe?g|webp|json)$/i;
+    if (!ALLOWED_EXT.test(data.filename)) {
+      throw new Error("Extensão de arquivo não permitida.");
+    }
     const path = `${context.userId}/${Date.now()}-${data.filename}`;
     const { data: signed, error } = await supabaseAdmin.storage
       .from("documents")
       .createSignedUploadUrl(path);
     if (error) throw new Error(error.message);
     return { path, token: signed.token };
+  });
+
+// ---------- UPDATE TEORIA / FONTE ----------
+const theoryUpdateSchema = theorySchema.partial().extend({
+  id: z.string().uuid(),
+});
+
+export const updateTheory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => theoryUpdateSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertEditor(context.userId);
+    const { id, ...rest } = data;
+    if (rest.title || rest.summary) {
+      rejectForbidden(`${rest.title ?? ""} ${rest.summary ?? ""}`);
+    }
+    const { data: row, error } = await supabaseAdmin
+      .from("theories")
+      .update(rest)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return { theory: row };
+  });
+
+const sourceUpdateSchema = sourceSchema.partial().extend({
+  id: z.string().uuid(),
+});
+
+export const updateSource = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => sourceUpdateSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertEditor(context.userId);
+    const { id, ...rest } = data;
+    if (rest.title || rest.description) {
+      rejectForbidden(`${rest.title ?? ""} ${rest.description ?? ""}`);
+    }
+    const { data: row, error } = await supabaseAdmin
+      .from("sources")
+      .update(rest)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return { source: row };
+  });
+
+// ---------- GESTÃO DE PAPÉIS ----------
+export const listUsersAndRoles = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const roles = await assertEditor(context.userId);
+    if (!roles.includes("admin")) throw new Error("Apenas admin pode listar usuários.");
+    const { data: list, error } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 200,
+    });
+    if (error) throw new Error(error.message);
+    const { data: roleRows } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id, role");
+    const rolesByUser = new Map<string, string[]>();
+    for (const r of roleRows ?? []) {
+      const arr = rolesByUser.get(r.user_id) ?? [];
+      arr.push(r.role);
+      rolesByUser.set(r.user_id, arr);
+    }
+    return {
+      users: list.users.map((u) => ({
+        id: u.id,
+        email: u.email ?? "",
+        display_name: (u.user_metadata?.display_name as string) ?? null,
+        created_at: u.created_at,
+        roles: rolesByUser.get(u.id) ?? [],
+      })),
+    };
+  });
+
+const roleEnum = z.enum(["admin", "editor", "viewer"]);
+
+export const setUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      user_id: z.string().uuid(),
+      role: roleEnum,
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const roles = await assertEditor(context.userId);
+    if (!roles.includes("admin")) throw new Error("Apenas admin pode atribuir papéis.");
+    const { error } = await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: data.user_id, role: data.role }, { onConflict: "user_id,role" });
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("moderation_logs").insert({
+      level: "approved",
+      reason: `Papel ${data.role} atribuído a ${data.user_id}`,
+      user_id: context.userId,
+      context: { target: data.user_id, role: data.role },
+    });
+    return { ok: true };
+  });
+
+export const removeUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      user_id: z.string().uuid(),
+      role: roleEnum,
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const roles = await assertEditor(context.userId);
+    if (!roles.includes("admin")) throw new Error("Apenas admin pode remover papéis.");
+    if (data.user_id === context.userId && data.role === "admin") {
+      const { count } = await supabaseAdmin
+        .from("user_roles")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "admin");
+      if ((count ?? 0) <= 1) {
+        throw new Error("Não é possível remover o último admin do sistema.");
+      }
+    }
+    const { error } = await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", data.user_id)
+      .eq("role", data.role);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
