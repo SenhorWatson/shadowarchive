@@ -11,6 +11,7 @@ import {
   Crown,
   AlertTriangle,
   CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/shadow/PageHeader";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,8 +23,10 @@ import {
   createSource,
   createSignedUpload,
   listModerationLogs,
+  deleteTheory,
+  deleteSource,
 } from "@/lib/admin.functions";
-import { listTheories } from "@/lib/theories.functions";
+import { listTheories, listAllSources } from "@/lib/theories.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
@@ -177,6 +180,11 @@ function AdminConsole({ roles }: { roles: string[] }) {
       <div className="grid lg:grid-cols-2 gap-6">
         <TheoryForm />
         <SourceForm />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <TheoryList isAdmin={isAdmin} />
+        <SourceList isAdmin={isAdmin} />
       </div>
 
       {isAdmin && <ModerationLogs />}
