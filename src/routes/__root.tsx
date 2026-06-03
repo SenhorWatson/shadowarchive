@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Sidebar } from "@/components/shadow/Sidebar";
 import { TopBar } from "@/components/shadow/TopBar";
 import { supabase } from "@/integrations/supabase/client";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -149,8 +150,17 @@ function AuthSync() {
 
 function RootShellInner() {
   const pathname = useRouter().state.location.pathname;
-  if (pathname.startsWith("/auth")) {
-    return <Outlet />;
+  if (
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password")
+  ) {
+    return (
+      <>
+        <Outlet />
+        <Toaster />
+      </>
+    );
   }
   return (
     <div className="flex min-h-screen">
@@ -162,6 +172,7 @@ function RootShellInner() {
             <Outlet />
           </main>
         </div>
+        <Toaster />
       </div>
   );
 }
