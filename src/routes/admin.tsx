@@ -753,10 +753,13 @@ function SourceList({ isAdmin }: { isAdmin: boolean }) {
   const mutation = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => {
+      toast.success("Fonte removida.");
       qc.invalidateQueries({ queryKey: ["sources"] });
       qc.invalidateQueries({ queryKey: ["theories"] });
     },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro"),
   });
+  const [editing, setEditing] = useState<SourceEditValues | null>(null);
 
   return (
     <section className="border border-border bg-card rounded-sm">
@@ -788,19 +791,38 @@ function SourceList({ isAdmin }: { isAdmin: boolean }) {
                   {s.agency ?? "—"} · {s.year ?? "—"}
                 </div>
               </div>
-              {isAdmin && (
+              <div className="flex items-center gap-1 shrink-0">
                 <button
-                  onClick={() => {
-                    if (confirm(`Remover fonte "${s.title}"?`)) {
-                      mutation.mutate(s.id);
-                    }
-                  }}
-                  disabled={mutation.isPending}
-                  className="shrink-0 inline-flex items-center gap-1 border border-destructive/40 text-destructive px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:bg-destructive/10 disabled:opacity-50"
+                  onClick={() =>
+                    setEditing({
+                      id: s.id,
+                      title: s.title,
+                      source_type: s.source_type,
+                      agency: s.agency ?? "",
+                      year: s.year ?? "",
+                      url: s.url ?? "",
+                      description: s.description ?? "",
+                      credibility: s.credibility,
+                    })
+                  }
+                  className="inline-flex items-center gap-1 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:border-accent hover:text-accent"
                 >
-                  <Trash2 className="h-3 w-3" /> Apagar
+                  <Pencil className="h-3 w-3" /> Editar
                 </button>
-              )}
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`Remover fonte "${s.title}"?`)) {
+                        mutation.mutate(s.id);
+                      }
+                    }}
+                    disabled={mutation.isPending}
+                    className="inline-flex items-center gap-1 border border-destructive/40 text-destructive px-2 py-1 font-mono text-[10px] uppercase tracking-widest hover:bg-destructive/10 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3 w-3" /> Apagar
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
