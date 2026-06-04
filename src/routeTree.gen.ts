@@ -14,6 +14,7 @@ import { Route as SourcesRouteImport } from './routes/sources'
 import { Route as InvestigatorRouteImport } from './routes/investigator'
 import { Route as GraphRouteImport } from './routes/graph'
 import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TheorySlugRouteImport } from './routes/theory.$slug'
@@ -43,6 +44,11 @@ const ExplorerRoute = ExplorerRouteImport.update({
   path: '/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -62,6 +68,7 @@ const TheorySlugRoute = TheorySlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/explorer': typeof ExplorerRoute
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/explorer': typeof ExplorerRoute
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/explorer': typeof ExplorerRoute
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/auth'
     | '/explorer'
     | '/graph'
     | '/investigator'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/auth'
     | '/explorer'
     | '/graph'
     | '/investigator'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/auth'
     | '/explorer'
     | '/graph'
     | '/investigator'
@@ -126,6 +138,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AuthRoute: typeof AuthRoute
   ExplorerRoute: typeof ExplorerRoute
   GraphRoute: typeof GraphRoute
   InvestigatorRoute: typeof InvestigatorRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -198,6 +218,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AuthRoute: AuthRoute,
   ExplorerRoute: ExplorerRoute,
   GraphRoute: GraphRoute,
   InvestigatorRoute: InvestigatorRoute,
