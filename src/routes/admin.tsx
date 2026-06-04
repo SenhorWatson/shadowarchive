@@ -71,8 +71,14 @@ function AdminPage() {
         <ShieldAlert className="h-10 w-10 text-accent mx-auto mb-3" />
         <h1 className="font-stamp text-2xl mb-2">Acesso restrito</h1>
         <p className="text-sm text-muted-foreground font-mono">
-          Painel desativado para acesso público.
+          Faça login para acessar o painel administrativo.
         </p>
+        <a
+          href="/auth"
+          className="mt-6 inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 font-mono text-xs uppercase tracking-widest hover:bg-primary/90"
+        >
+          Entrar
+        </a>
       </div>
     );
   }
@@ -407,7 +413,13 @@ function SourceForm() {
       let file_path: string | null = null;
       if (file) {
         const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, "_");
-        const { path, token } = await signUpload({ data: { filename: safeName } });
+        const { path, token } = await signUpload({
+          data: {
+            filename: safeName,
+            size: file.size,
+            mime: file.type || "application/octet-stream",
+          },
+        });
         const { error: upErr } = await supabase.storage
           .from("documents")
           .uploadToSignedUrl(path, token, file);
