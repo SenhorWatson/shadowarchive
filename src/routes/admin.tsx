@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -70,15 +70,9 @@ function AdminPage() {
       <div className="max-w-md mx-auto px-6 py-20 text-center">
         <ShieldAlert className="h-10 w-10 text-accent mx-auto mb-3" />
         <h1 className="font-stamp text-2xl mb-2">Acesso restrito</h1>
-        <p className="text-sm text-muted-foreground mb-6 font-mono">
-          Apenas operadores autenticados podem acessar o painel.
+        <p className="text-sm text-muted-foreground font-mono">
+          Painel desativado para acesso público.
         </p>
-        <Link
-          to="/auth"
-          className="inline-flex items-center gap-2 border border-accent text-accent px-4 py-2 font-mono text-sm uppercase tracking-widest hover:bg-accent/10"
-        >
-          Acessar // operador
-        </Link>
       </div>
     );
   }

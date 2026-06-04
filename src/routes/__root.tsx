@@ -149,19 +149,6 @@ function AuthSync() {
 }
 
 function RootShellInner() {
-  const pathname = useRouter().state.location.pathname;
-  if (
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/forgot-password") ||
-    pathname.startsWith("/reset-password")
-  ) {
-    return (
-      <>
-        <Outlet />
-        <Toaster />
-      </>
-    );
-  }
   return (
     <div className="flex min-h-screen">
         <Sidebar />
