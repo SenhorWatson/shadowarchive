@@ -39,6 +39,211 @@ import {
 import { listTheories, listAllSources } from "@/lib/theories.functions";
 import { cn } from "@/lib/utils";
 
+// ---------- 2FA / MFA PANEL ----------
+function MfaPanel() {
+  const qc = useQueryClient();
+  const { data: factors, isLoading } = useQuery({
+    queryKey: ["mfa-factors"],
+    queryFn: async () => {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const [enrolling, setEnrolling] = useState<null | {
+    factorId: string;
+    qr: string;
+    secret: string;
+  }>(null);
+  const [code, setCode] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function startEnroll() {
+    setErr(null);
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: "totp",
+        friendlyName: `TOTP ${new Date().toISOString().slice(0, 10)}`,
+      });
+      if (error) throw error;
+      setEnrolling({
+        factorId: data.id,
+        qr: data.totp.qr_code,
+        secret: data.totp.secret,
+      });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Erro ao iniciar 2FA");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verifyEnroll() {
+    if (!enrolling) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const { data: chall, error: cErr } = await supabase.auth.mfa.challenge({
+        factorId: enrolling.factorId,
+      });
+      if (cErr) throw cErr;
+      const { error: vErr } = await supabase.auth.mfa.verify({
+        factorId: enrolling.factorId,
+        challengeId: chall.id,
+        code,
+      });
+      if (vErr) throw vErr;
+      toast.success("2FA ativado.");
+      setEnrolling(null);
+      setCode("");
+      qc.invalidateQueries({ queryKey: ["mfa-factors"] });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Código inválido");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function unenroll(id: string) {
+    if (!confirm("Remover este fator 2FA?")) return;
+    const { error } = await supabase.auth.mfa.unenroll({ factorId: id });
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Fator removido.");
+      qc.invalidateQueries({ queryKey: ["mfa-factors"] });
+    }
+  }
+
+  const verified = (factors?.totp ?? []).filter((f) => f.status === "verified");
+  const pending = (factors?.totp ?? []).filter((f) => f.status === "unverified");
+
+  return (
+    <section className="border border-border bg-card rounded-sm">
+      <header className="border-b border-border px-5 py-3 flex items-center justify-between">
+        <h2 className="font-stamp text-xl flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-accent" /> Autenticação em 2 fatores
+        </h2>
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+          TOTP · RFC 6238
+        </span>
+      </header>
+      <div className="p-5 space-y-4">
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-accent" />
+        ) : verified.length === 0 && !enrolling ? (
+          <p className="text-sm text-muted-foreground font-mono">
+            Nenhum app autenticador vinculado. Recomendado para admins.
+          </p>
+        ) : null}
+
+        {verified.length > 0 && (
+          <ul className="space-y-2">
+            {verified.map((f) => (
+              <li
+                key={f.id}
+                className="flex items-center justify-between border border-accent/30 bg-accent/5 px-3 py-2"
+              >
+                <div>
+                  <div className="font-mono text-xs text-accent">
+                    {f.friendly_name ?? f.id}
+                  </div>
+                  <div className="font-mono text-[10px] text-muted-foreground">
+                    ativo · {new Date(f.created_at).toLocaleDateString("pt-BR")}
+                  </div>
+                </div>
+                <button
+                  onClick={() => unenroll(f.id)}
+                  className="font-mono text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10"
+                >
+                  Remover
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {pending.length > 0 && !enrolling && (
+          <p className="text-xs font-mono text-muted-foreground">
+            Há {pending.length} fator(es) pendente(s). Conclua ou remova.
+          </p>
+        )}
+
+        {!enrolling ? (
+          <button
+            onClick={startEnroll}
+            disabled={busy}
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-primary/90 disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />}
+            Ativar 2FA
+          </button>
+        ) : (
+          <div className="border border-border p-4 space-y-3">
+            <p className="text-xs font-mono text-muted-foreground">
+              Escaneie o QR code no seu app autenticador (Google Authenticator,
+              1Password, Authy, etc.) ou copie o segredo manualmente.
+            </p>
+            <div className="flex items-start gap-4">
+              <img
+                src={enrolling.qr}
+                alt="QR code 2FA"
+                className="h-40 w-40 bg-white p-2 border border-border"
+              />
+              <div className="flex-1 space-y-2">
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Segredo
+                  </div>
+                  <code className="block font-mono text-[11px] text-accent break-all">
+                    {enrolling.secret}
+                  </code>
+                </div>
+                <input
+                  className={INPUT}
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="código de 6 dígitos"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={verifyEnroll}
+                    disabled={busy || code.length !== 6}
+                    className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest px-4 py-2 hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                    Confirmar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.mfa.unenroll({ factorId: enrolling.factorId });
+                      setEnrolling(null);
+                      setCode("");
+                      qc.invalidateQueries({ queryKey: ["mfa-factors"] });
+                    }}
+                    className="font-mono text-[10px] uppercase tracking-widest border border-border px-3 py-2 hover:border-destructive hover:text-destructive"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {err && (
+          <p className="text-xs text-destructive font-mono border border-destructive/40 bg-destructive/10 px-3 py-2">
+            {err}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
