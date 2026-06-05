@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      auth_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          identifier: string
+          ip: string | null
+          succeeded: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          identifier: string
+          ip?: string | null
+          succeeded?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          identifier?: string
+          ip?: string | null
+          succeeded?: boolean
+        }
+        Relationships: []
+      }
       moderation_logs: {
         Row: {
           context: Json | null
@@ -38,6 +62,48 @@ export type Database = {
           level?: string
           reason?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      pastes: {
+        Row: {
+          author: string
+          body_md: string
+          created_at: string
+          created_by: string | null
+          excerpt: string
+          id: string
+          published: boolean
+          slug: string
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string
+          body_md?: string
+          created_at?: string
+          created_by?: string | null
+          excerpt?: string
+          id?: string
+          published?: boolean
+          slug: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string
+          body_md?: string
+          created_at?: string
+          created_by?: string | null
+          excerpt?: string
+          id?: string
+          published?: boolean
+          slug?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }

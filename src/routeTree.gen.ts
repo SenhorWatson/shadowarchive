@@ -17,6 +17,8 @@ import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VaultNewRouteImport } from './routes/vault.new'
+import { Route as VaultSlugRouteImport } from './routes/vault.$slug'
 import { Route as TheorySlugRouteImport } from './routes/theory.$slug'
 
 const VaultRoute = VaultRouteImport.update({
@@ -59,6 +61,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VaultNewRoute = VaultNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => VaultRoute,
+} as any)
+const VaultSlugRoute = VaultSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => VaultRoute,
+} as any)
 const TheorySlugRoute = TheorySlugRouteImport.update({
   id: '/theory/$slug',
   path: '/theory/$slug',
@@ -73,8 +85,10 @@ export interface FileRoutesByFullPath {
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
   '/sources': typeof SourcesRoute
-  '/vault': typeof VaultRoute
+  '/vault': typeof VaultRouteWithChildren
   '/theory/$slug': typeof TheorySlugRoute
+  '/vault/$slug': typeof VaultSlugRoute
+  '/vault/new': typeof VaultNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -84,8 +98,10 @@ export interface FileRoutesByTo {
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
   '/sources': typeof SourcesRoute
-  '/vault': typeof VaultRoute
+  '/vault': typeof VaultRouteWithChildren
   '/theory/$slug': typeof TheorySlugRoute
+  '/vault/$slug': typeof VaultSlugRoute
+  '/vault/new': typeof VaultNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -96,8 +112,10 @@ export interface FileRoutesById {
   '/graph': typeof GraphRoute
   '/investigator': typeof InvestigatorRoute
   '/sources': typeof SourcesRoute
-  '/vault': typeof VaultRoute
+  '/vault': typeof VaultRouteWithChildren
   '/theory/$slug': typeof TheorySlugRoute
+  '/vault/$slug': typeof VaultSlugRoute
+  '/vault/new': typeof VaultNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +129,8 @@ export interface FileRouteTypes {
     | '/sources'
     | '/vault'
     | '/theory/$slug'
+    | '/vault/$slug'
+    | '/vault/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +142,8 @@ export interface FileRouteTypes {
     | '/sources'
     | '/vault'
     | '/theory/$slug'
+    | '/vault/$slug'
+    | '/vault/new'
   id:
     | '__root__'
     | '/'
@@ -133,6 +155,8 @@ export interface FileRouteTypes {
     | '/sources'
     | '/vault'
     | '/theory/$slug'
+    | '/vault/$slug'
+    | '/vault/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -143,7 +167,7 @@ export interface RootRouteChildren {
   GraphRoute: typeof GraphRoute
   InvestigatorRoute: typeof InvestigatorRoute
   SourcesRoute: typeof SourcesRoute
-  VaultRoute: typeof VaultRoute
+  VaultRoute: typeof VaultRouteWithChildren
   TheorySlugRoute: typeof TheorySlugRoute
 }
 
@@ -205,6 +229,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vault/new': {
+      id: '/vault/new'
+      path: '/new'
+      fullPath: '/vault/new'
+      preLoaderRoute: typeof VaultNewRouteImport
+      parentRoute: typeof VaultRoute
+    }
+    '/vault/$slug': {
+      id: '/vault/$slug'
+      path: '/$slug'
+      fullPath: '/vault/$slug'
+      preLoaderRoute: typeof VaultSlugRouteImport
+      parentRoute: typeof VaultRoute
+    }
     '/theory/$slug': {
       id: '/theory/$slug'
       path: '/theory/$slug'
@@ -215,6 +253,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface VaultRouteChildren {
+  VaultSlugRoute: typeof VaultSlugRoute
+  VaultNewRoute: typeof VaultNewRoute
+}
+
+const VaultRouteChildren: VaultRouteChildren = {
+  VaultSlugRoute: VaultSlugRoute,
+  VaultNewRoute: VaultNewRoute,
+}
+
+const VaultRouteWithChildren = VaultRoute._addFileChildren(VaultRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
@@ -223,19 +273,9 @@ const rootRouteChildren: RootRouteChildren = {
   GraphRoute: GraphRoute,
   InvestigatorRoute: InvestigatorRoute,
   SourcesRoute: SourcesRoute,
-  VaultRoute: VaultRoute,
+  VaultRoute: VaultRouteWithChildren,
   TheorySlugRoute: TheorySlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
