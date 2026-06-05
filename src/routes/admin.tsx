@@ -116,8 +116,9 @@ function MfaPanel() {
     }
   }
 
-  const verified = (factors?.totp ?? []).filter((f) => f.status === "verified");
-  const pending = (factors?.totp ?? []).filter((f) => f.status === "unverified");
+  const allTotp = (factors?.totp ?? []) as Array<{ id: string; friendly_name?: string | null; status: string; created_at: string }>;
+  const verified = allTotp.filter((f) => f.status === "verified");
+  const pending = allTotp.filter((f) => f.status !== "verified");
 
   return (
     <section className="border border-border bg-card rounded-sm">
