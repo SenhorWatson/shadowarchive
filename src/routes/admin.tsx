@@ -199,6 +199,7 @@ function AdminConsole({ roles }: { roles: string[] }) {
 
       {isAdmin && <RolesPanel />}
       {isAdmin && <ModerationLogs />}
+      <MfaPanel />
     </div>
   );
 }
