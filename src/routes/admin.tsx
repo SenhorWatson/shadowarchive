@@ -8,7 +8,6 @@ import {
   Plus,
   FileText,
   Upload,
-  Crown,
   AlertTriangle,
   CheckCircle2,
   Trash2,
@@ -23,7 +22,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getMyRoles,
-  claimAdmin,
   createTheory,
   createSource,
   createSignedUpload,
@@ -294,7 +292,7 @@ function AdminPage() {
 
 function AdminAuthenticated() {
   const fetchRoles = useServerFn(getMyRoles);
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["my-roles"],
     queryFn: () => fetchRoles(),
   });
@@ -311,63 +309,22 @@ function AdminAuthenticated() {
   const isEditor = roles.includes("admin") || roles.includes("editor");
 
   if (!isEditor) {
-    return <NoPrivileges anyAdmin={data?.anyAdminExists ?? false} onPromoted={() => refetch()} />;
+    return <NoPrivileges />;
   }
 
   return <AdminConsole roles={roles} />;
 }
 
-function NoPrivileges({ anyAdmin, onPromoted }: { anyAdmin: boolean; onPromoted: () => void }) {
-  const claim = useServerFn(claimAdmin);
-  const mutation = useMutation({
-    mutationFn: () => claim(),
-    onSuccess: (res) => {
-      if (res.promoted) onPromoted();
-    },
-  });
-
+function NoPrivileges() {
   return (
     <div className="max-w-xl mx-auto px-6 py-16 text-center">
       <ShieldAlert className="h-10 w-10 text-accent mx-auto mb-3" />
       <h1 className="font-stamp text-2xl mb-2">Sem privilégios</h1>
-      <p className="text-sm text-muted-foreground font-mono mb-6">
+      <p className="text-sm text-muted-foreground font-mono">
         Sua conta não possui papel <code>admin</code> ou <code>editor</code>.
+        <br />
+        Apenas o administrador desta instância pode conceder acesso.
       </p>
-
-      {!anyAdmin && (
-        <div className="border border-accent/40 bg-accent/5 p-6 text-left">
-          <div className="flex items-center gap-2 mb-2 text-accent">
-            <Crown className="h-4 w-4" />
-            <span className="font-mono text-xs uppercase tracking-widest">Bootstrap</span>
-          </div>
-          <p className="text-sm text-foreground/90 mb-4">
-            Nenhum admin existe ainda. Você pode reivindicar o cargo de admin desta
-            instância — isso só funciona uma vez.
-          </p>
-          <button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-            className="inline-flex items-center gap-2 bg-accent text-accent-foreground px-4 py-2 font-mono text-xs uppercase tracking-widest hover:opacity-90 disabled:opacity-50"
-          >
-            {mutation.isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Crown className="h-3.5 w-3.5" />
-            )}
-            Reivindicar admin
-          </button>
-          {mutation.data && !mutation.data.promoted && (
-            <p className="mt-3 text-xs text-destructive font-mono">
-              Já existe um admin nesta instância.
-            </p>
-          )}
-          {mutation.error && (
-            <p className="mt-3 text-xs text-destructive font-mono">
-              {(mutation.error as Error).message}
-            </p>
-          )}
-        </div>
-      )}
     </div>
   );
 }
