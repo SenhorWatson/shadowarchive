@@ -62,16 +62,6 @@ export const getMyRoles = createServerFn({ method: "GET" })
     return { roles, anyAdminExists: (count ?? 0) > 0 };
   });
 
-export const claimAdmin = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await supabaseAdmin.rpc("claim_admin_if_none", {
-      _user_id: context.userId,
-    });
-    if (error) throw new Error(error.message);
-    return { promoted: Boolean(data) };
-  });
-
 const theorySchema = z.object({
   slug: z.string().min(2).max(80).regex(/^[a-z0-9-]+$/, "use kebab-case"),
   title: z.string().min(3).max(160),
