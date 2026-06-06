@@ -9,7 +9,12 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "cf:dev": "wrangler dev",
+    "cf:tail": "wrangler tail",
+    "cf:secret": "wrangler secret",
+    "deploy": "vite build && wrangler deploy",
+    "deploy:preview": "vite build && wrangler deploy --env preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
