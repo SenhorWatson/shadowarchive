@@ -1,44 +1,40 @@
-# Cloudflare Workers deploy config para ShadowArchive AI
-# Stack: TanStack Start + Nitro (preset cloudflare-module) + Supabase
+# ⚠️ IMPORTANTE: este arquivo é apenas referência/metadados.
 #
-# O build é feito pelo @lovable.dev/vite-tanstack-config, que já usa o
-# preset Cloudflare do Nitro. Saída padrão: ./dist
+# O build (Nitro preset `cloudflare-module`, via
+# @lovable.dev/vite-tanstack-config) gera AUTOMATICAMENTE o config real em:
 #
-# Comandos:
-#   bun run build                # compila SSR + assets
-#   bun run deploy               # publica em produção
-#   bun run deploy:preview       # publica em ambiente "preview"
-#   bun run cf:tail              # tail de logs em tempo real
-#   bun run cf:secret PUT NOME   # configurar secret no Worker
+#   dist/server/wrangler.json   ← USE ESTE NO DEPLOY
+#   dist/server/index.mjs       ← entrypoint Worker
+#   dist/client/                ← assets estáticos (binding ASSETS)
+#
+# Por isso, ao rodar o build você verá:
+#   WARN [cloudflare] Wrangler config main is overridden and will be ignored.
+#   WARN [cloudflare] Wrangler config assets is overridden and will be ignored.
+#
+# Deploy correto:
+#   npm run build
+#   npx wrangler deploy -c dist/server/wrangler.json
+#   # ou: npx nitro deploy --prebuilt
+#
+# Os scripts em package.json (`deploy`, `deploy:preview`, `cf:tail`) já
+# apontam para `dist/server/wrangler.json`.
 
 name = "shadow-archive"
 main = "./dist/server/index.mjs"
 compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Static assets emitidos pelo build (HTML/CSS/JS do client)
 [assets]
 directory = "./dist/client"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 
-# Observabilidade nativa (logs no dashboard CF)
 [observability]
 enabled = true
-
-# ---------------------------------------------------------------
-# Variáveis públicas (substituídas em build pelo Vite via VITE_*).
-# Use `wrangler secret put` para segredos sensíveis abaixo:
-#   SUPABASE_URL
-#   SUPABASE_PUBLISHABLE_KEY
-#   SUPABASE_SERVICE_ROLE_KEY
-#   LOVABLE_API_KEY
-# ---------------------------------------------------------------
 
 [vars]
 NODE_ENV = "production"
 
-# Ambiente de preview opcional (rota separada / staging)
 [env.preview]
 name = "shadow-archive-preview"
 
