@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export type TheoryRow = {
@@ -74,10 +75,21 @@ export const listAllSources = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const getSignedDocumentUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({ path: z.string().min(1).max(500) }).parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    // Apenas admin/editor podem baixar documentos privados.
+    const { data: roleRows, error: rErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (rErr) throw new Error(rErr.message);
+    const roles = (roleRows ?? []).map((r) => r.role);
+    if (!roles.includes("admin") && !roles.includes("editor")) {
+      throw new Error("Acesso negado a documentos restritos.");
+    }
     const { data: signed, error } = await supabaseAdmin.storage
       .from("documents")
       .createSignedUrl(data.path, 60 * 10);

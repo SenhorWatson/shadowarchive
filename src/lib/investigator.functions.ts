@@ -30,7 +30,12 @@ REGRAS:
 export const investigatorChat = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
-    const lastUser = [...data.messages].reverse().find((m) => m.role === "user");
+    // SEGURANÇA: descarta qualquer mensagem 'system' vinda do cliente
+    // (impede injeção de instruções que sobrescreveriam a política editorial).
+    const safeMessages = data.messages.filter(
+      (m) => m.role === "user" || m.role === "assistant",
+    );
+    const lastUser = [...safeMessages].reverse().find((m) => m.role === "user");
     if (lastUser) {
       const lc = lastUser.content.toLowerCase();
       if (BLOCKED.some((k) => lc.includes(k))) {
@@ -51,7 +56,7 @@ export const investigatorChat = createServerFn({ method: "POST" })
       ...(data.context
         ? [{ role: "system" as const, content: `CONTEXTO DOCUMENTAL:\n${data.context}` }]
         : []),
-      ...data.messages,
+      ...safeMessages,
     ];
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

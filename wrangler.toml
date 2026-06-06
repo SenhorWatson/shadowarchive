@@ -1,0 +1,46 @@
+# Cloudflare Workers deploy config para ShadowArchive AI
+# Stack: TanStack Start + Nitro (preset cloudflare-module) + Supabase
+#
+# O build é feito pelo @lovable.dev/vite-tanstack-config, que já usa o
+# preset Cloudflare do Nitro. Saída padrão: ./dist
+#
+# Comandos:
+#   bun run build                # compila SSR + assets
+#   bun run deploy               # publica em produção
+#   bun run deploy:preview       # publica em ambiente "preview"
+#   bun run cf:tail              # tail de logs em tempo real
+#   bun run cf:secret PUT NOME   # configurar secret no Worker
+
+name = "shadow-archive"
+main = "./dist/server/index.mjs"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets emitidos pelo build (HTML/CSS/JS do client)
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# Observabilidade nativa (logs no dashboard CF)
+[observability]
+enabled = true
+
+# ---------------------------------------------------------------
+# Variáveis públicas (substituídas em build pelo Vite via VITE_*).
+# Use `wrangler secret put` para segredos sensíveis abaixo:
+#   SUPABASE_URL
+#   SUPABASE_PUBLISHABLE_KEY
+#   SUPABASE_SERVICE_ROLE_KEY
+#   LOVABLE_API_KEY
+# ---------------------------------------------------------------
+
+[vars]
+NODE_ENV = "production"
+
+# Ambiente de preview opcional (rota separada / staging)
+[env.preview]
+name = "shadow-archive-preview"
+
+[env.preview.vars]
+NODE_ENV = "preview"
