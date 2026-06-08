@@ -25,10 +25,27 @@ Também configure as `VITE_*` no `.env` local — elas são embutidas em build.
 ## 3. Build + deploy
 
 ```bash
-bun run deploy             # produção
-bun run deploy:preview     # staging
+npm run deploy             # produção
+npm run deploy:preview     # staging
 bun run cf:tail            # logs ao vivo
 ```
+
+Fluxo estável recomendado no CI:
+
+```bash
+npm run build
+npx wrangler deploy
+```
+
+Alternativa compatível com Nitro prebuilt:
+
+```bash
+npx nitro deploy --prebuilt
+```
+
+Evite usar `-c dist/server/wrangler.json` no CI da Cloudflare, porque esse
+arquivo é gerado durante o build e pode não estar disponível no diretório de
+trabalho exato em que o passo de deploy é iniciado.
 
 ## 4. Compatibilidade
 
