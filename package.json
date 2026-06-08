@@ -13,8 +13,8 @@
     "cf:dev": "wrangler dev",
     "cf:tail": "wrangler tail",
     "cf:secret": "wrangler secret",
-    "deploy": "vite build && wrangler deploy -c dist/server/wrangler.json",
-    "deploy:preview": "vite build && wrangler deploy -c dist/server/wrangler.json --env preview"
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:preview": "npm run build && wrangler deploy --env preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

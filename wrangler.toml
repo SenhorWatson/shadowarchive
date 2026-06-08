@@ -1,28 +1,23 @@
-# ⚠️ IMPORTANTE: este arquivo é apenas referência/metadados.
+# Configuração estável para Cloudflare Workers SSR.
 #
-# O build (Nitro preset `cloudflare-module`, via
-# @lovable.dev/vite-tanstack-config) gera AUTOMATICAMENTE o config real em:
+# O build ainda gera `dist/server/wrangler.json`, mas o deploy em CI deve usar
+# ESTE arquivo da raiz para evitar depender de um caminho gerado dentro de
+# `dist/server/` que pode não existir no momento em que o Wrangler inicia.
 #
-#   dist/server/wrangler.json   ← USE ESTE NO DEPLOY
-#   dist/server/index.mjs       ← entrypoint Worker
-#   dist/client/                ← assets estáticos (binding ASSETS)
-#
-# Por isso, ao rodar o build você verá:
-#   WARN [cloudflare] Wrangler config main is overridden and will be ignored.
-#   WARN [cloudflare] Wrangler config assets is overridden and will be ignored.
-#
-# Deploy correto:
+# Fluxo suportado:
 #   npm run build
-#   npx wrangler deploy -c dist/server/wrangler.json
-#   # ou: npx nitro deploy --prebuilt
+#   npx wrangler deploy
 #
-# Os scripts em package.json (`deploy`, `deploy:preview`, `cf:tail`) já
-# apontam para `dist/server/wrangler.json`.
+# Artefatos reais produzidos pelo build:
+#   dist/server/index.mjs
+#   dist/server/wrangler.json
+#   dist/client/
 
 name = "shadow-archive"
 main = "./dist/server/index.mjs"
 compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat"]
+no_bundle = true
 
 [assets]
 directory = "./dist/client"
@@ -34,6 +29,10 @@ enabled = true
 
 [vars]
 NODE_ENV = "production"
+
+[[rules]]
+type = "ESModule"
+globs = ["**/*.mjs", "**/*.js"]
 
 [env.preview]
 name = "shadow-archive-preview"
