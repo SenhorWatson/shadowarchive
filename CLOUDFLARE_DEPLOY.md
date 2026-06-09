@@ -47,6 +47,16 @@ Evite usar `-c dist/server/wrangler.json` no CI da Cloudflare, porque esse
 arquivo é gerado durante o build e pode não estar disponível no diretório de
 trabalho exato em que o passo de deploy é iniciado.
 
+## Configuração na Cloudflare (Workers Builds)
+
+- **Root Directory**: (vazio — raiz do repo)
+- **Build Command**: `npm install && npm run build`
+- **Deploy Command**: `npx wrangler deploy`  ⚠️ atenção ao typo `deply`
+
+O `postbuild` remove `.wrangler/deploy/config.json` (redirect gerado pelo
+Nitro) para que o Wrangler use sempre o `wrangler.toml` da raiz, eliminando
+o erro `ENOENT: dist/server/wrangler.json`.
+
 ## 4. Compatibilidade
 
 - ✅ TanStack Start SSR (Nitro preset `cloudflare-module`)
