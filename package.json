@@ -1,5 +1,5 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "shadow-archive",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -10,11 +10,11 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "cf:dev": "cd dist/server && wrangler dev",
-    "cf:tail": "wrangler tail",
-    "cf:secret": "wrangler secret",
-    "deploy": "npm run build && cd dist/server && wrangler deploy",
-    "deploy:preview": "npm run build && cd dist/server && wrangler deploy --env preview"
+    "cf:dev": "cd dist/server && npx wrangler dev",
+    "cf:tail": "npx wrangler tail",
+    "cf:secret": "npx wrangler secret",
+    "deploy": "npm run build && cd dist/server && npx wrangler deploy",
+    "deploy:preview": "npm run build && cd dist/server && npx wrangler deploy --name shadow-archive-preview --var NODE_ENV:preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
