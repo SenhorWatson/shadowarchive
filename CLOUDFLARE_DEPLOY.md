@@ -1,17 +1,38 @@
 # Deploy em Cloudflare Workers
 
-Este projeto já é construído para Cloudflare (o preset Nitro do
-`@lovable.dev/vite-tanstack-config` faz o targeting automático). Para
-publicar manualmente fora do Lovable:
+## Arquitetura
 
-## 1. Pré-requisitos
+O build (Vite + Nitro preset `cloudflare-module`) gera tudo o que o Wrangler
+precisa dentro de `dist/server/`:
 
-```bash
-bun add -d wrangler
-npx wrangler login
+```
+dist/
+├── client/              # assets estáticos (binding ASSETS)
+└── server/
+    ├── index.mjs        # entrypoint do Worker
+    ├── wrangler.json    # config canônica gerada pelo Nitro
+    └── _ssr/, _server/  # chunks SSR
 ```
 
-## 2. Configurar secrets no Worker
+O `wrangler.json` gerado usa caminhos relativos (`main: "index.mjs"`,
+`assets.directory: "../client"`), portanto basta executar `wrangler deploy`
+a partir de `dist/server/` — sem `wrangler.toml` na raiz, sem
+`.wrangler/deploy/config.json`, sem ambiguidade de caminho.
+
+## Configuração na Cloudflare (Workers Builds)
+
+- **Root Directory**: (vazio — raiz do repo)
+- **Build Command**: `npm install`
+- **Deploy Command**: `npm run deploy`
+
+O script `deploy` faz `vite build` e em seguida `cd dist/server && wrangler
+deploy` — build e deploy acontecem na mesma fase, no mesmo workspace. Isso
+elimina o erro `ENOENT: dist/server/index.mjs` causado por CI que executa
+build e deploy em workspaces separados ou em ordens diferentes.
+
+Para o ambiente de preview, use Deploy Command `npm run deploy:preview`.
+
+## Secrets do Worker
 
 ```bash
 npx wrangler secret put SUPABASE_URL
@@ -20,49 +41,24 @@ npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 npx wrangler secret put LOVABLE_API_KEY
 ```
 
-Também configure as `VITE_*` no `.env` local — elas são embutidas em build.
+Variáveis `VITE_*` ficam no `.env` local (embutidas em build).
 
-## 3. Build + deploy
-
-```bash
-npm run deploy             # produção
-npm run deploy:preview     # staging
-bun run cf:tail            # logs ao vivo
-```
-
-Fluxo estável recomendado no CI:
+## Comandos locais
 
 ```bash
-npm run build
-npx wrangler deploy
+npm run deploy           # build + deploy produção
+npm run deploy:preview   # build + deploy preview
+npm run cf:dev           # wrangler dev a partir de dist/server
+npm run cf:tail          # logs ao vivo
 ```
 
-Alternativa compatível com Nitro prebuilt:
-
-```bash
-npx nitro deploy --prebuilt
-```
-
-Evite usar `-c dist/server/wrangler.json` no CI da Cloudflare, porque esse
-arquivo é gerado durante o build e pode não estar disponível no diretório de
-trabalho exato em que o passo de deploy é iniciado.
-
-## Configuração na Cloudflare (Workers Builds)
-
-- **Root Directory**: (vazio — raiz do repo)
-- **Build Command**: `npm install && npm run build`
-- **Deploy Command**: `npx wrangler deploy`  ⚠️ atenção ao typo `deply`
-
-O `postbuild` remove `.wrangler/deploy/config.json` (redirect gerado pelo
-Nitro) para que o Wrangler use sempre o `wrangler.toml` da raiz, eliminando
-o erro `ENOENT: dist/server/wrangler.json`.
-
-## 4. Compatibilidade
+## Compatibilidade
 
 - ✅ TanStack Start SSR (Nitro preset `cloudflare-module`)
-- ✅ Supabase client + middleware de auth (usa `fetch` global)
+- ✅ Supabase client + auth middleware
 - ✅ Lovable AI Gateway
-- ✅ `nodejs_compat` flag ligado para `crypto`, `Buffer`, `stream`
-- ⚠️  Sem `sharp`, `puppeteer`, `child_process`, `fs.watch`
+- ✅ `nodejs_compat` flag ligado
+- ⚠️ Sem `sharp`, `puppeteer`, `child_process`, `fs.watch`
 
-Não edite `src/server.ts` — é o entrypoint SSR já configurado.
+Não edite `src/server.ts` (entrypoint SSR) nem `src/integrations/supabase/*`
+(auto-gerados).
