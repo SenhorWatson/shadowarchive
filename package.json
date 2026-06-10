@@ -6,16 +6,15 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "postbuild": "rm -rf .wrangler/deploy",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "cf:dev": "wrangler dev",
+    "cf:dev": "cd dist/server && wrangler dev",
     "cf:tail": "wrangler tail",
     "cf:secret": "wrangler secret",
-    "deploy": "npm run build && wrangler deploy",
-    "deploy:preview": "npm run build && wrangler deploy --env preview"
+    "deploy": "npm run build && cd dist/server && wrangler deploy",
+    "deploy:preview": "npm run build && cd dist/server && wrangler deploy --env preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
