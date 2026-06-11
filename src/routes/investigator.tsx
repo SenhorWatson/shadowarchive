@@ -92,7 +92,7 @@ function InvestigatorPage() {
       console.error(e);
       setMessages((m) => [
         ...m,
-        { role: "ai", content: "// FALHA DE TRANSMISSÃO\n\n" + (e instanceof Error ? e.message : "Erro desconhecido") },
+        { role: "ai", content: "// FALHA DE TRANSMISSÃO\n\nNão foi possível processar a consulta. Tente novamente." },
       ]);
     } finally {
       setLoading(false);

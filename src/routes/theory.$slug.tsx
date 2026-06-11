@@ -27,11 +27,14 @@ export const Route = createFileRoute("/theory/$slug")({
       [ arquivo inexistente ou redirecionado ]
     </div>
   ),
-  errorComponent: ({ error }) => (
+  errorComponent: ({ error }) => {
+    console.error("theory.$slug load error:", error);
+    return (
     <div className="max-w-3xl mx-auto px-6 py-20 text-center">
-      <div className="font-mono text-destructive">ERRO_LEITURA: {error.message}</div>
+      <div className="font-mono text-destructive">ERRO_LEITURA: falha temporária ao acessar o arquivo.</div>
     </div>
-  ),
+    );
+  },
   component: TheoryPage,
 });
 

@@ -28,11 +28,12 @@ function PasteView() {
   }
 
   if (error || !data) {
+    if (error) console.error("vault.$slug load error:", error);
     return (
       <div className="max-w-3xl mx-auto px-6 py-16 text-center">
         <h1 className="font-stamp text-2xl mb-2">Relatório não encontrado</h1>
         <p className="text-sm text-muted-foreground font-mono mb-6">
-          {error instanceof Error ? error.message : "—"}
+          —
         </p>
         <Link to="/vault" className="inline-flex items-center gap-2 border border-border px-4 py-2 font-mono text-xs uppercase tracking-widest hover:border-accent hover:text-accent">
           <ArrowLeft className="h-3 w-3" /> Voltar
