@@ -144,7 +144,13 @@ const sourceSchema = z.object({
   source_type: z.string().min(2).max(40),
   agency: z.string().max(80).optional().nullable(),
   year: z.string().max(20).optional().nullable(),
-  url: z.string().url().max(500).optional().nullable(),
+  url: z
+    .string()
+    .url()
+    .max(500)
+    .regex(/^https?:\/\//i, "Apenas URLs http(s) são permitidas")
+    .optional()
+    .nullable(),
   description: z.string().max(2000).optional().nullable(),
   credibility,
   file_path: z.string().max(300).optional().nullable(),
