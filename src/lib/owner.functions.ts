@@ -30,7 +30,7 @@ export const bootstrapOwner = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const existing = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 });
-    if (existing.error) throw new Error(existing.error.message);
+    if (existing.error) throw safeDbError(existing.error);
     if ((existing.data?.users?.length ?? 0) > 0) {
       throw new Error("Proprietário já existe. Cadastro bloqueado.");
     }
