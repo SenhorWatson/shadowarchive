@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { safeDbError } from "./db-errors";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -19,7 +20,7 @@ function rejectForbidden(text: string) {
 async function assertEditor(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("user_roles").select("role").eq("user_id", userId);
-  if (error) throw new Error(error.message);
+  if (error) throw safeDbError(error);
   const roles = (data ?? []).map((r) => r.role);
   if (!roles.includes("admin") && !roles.includes("editor")) {
     throw new Error("Acesso negado: requer papel admin ou editor.");
@@ -34,7 +35,7 @@ export const listPastes = createServerFn({ method: "GET" }).handler(async () => 
     .eq("published", true)
     .order("created_at", { ascending: false })
     .limit(200);
-  if (error) throw new Error(error.message);
+  if (error) throw safeDbError(error);
   return { pastes: data ?? [] };
 });
 
@@ -49,7 +50,7 @@ export const getPaste = createServerFn({ method: "GET" })
       .eq("slug", data.slug)
       .eq("published", true)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     if (!row) throw new Error("Paste não encontrado.");
     return { paste: row };
   });
@@ -75,7 +76,7 @@ export const createPaste = createServerFn({ method: "POST" })
       .insert({ ...data, created_by: context.userId })
       .select("*")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     await supabaseAdmin.from("moderation_logs").insert({
       level: "approved",
       reason: `Paste criado: ${data.slug}`,
@@ -92,6 +93,6 @@ export const deletePaste = createServerFn({ method: "POST" })
     const roles = await assertEditor(context.userId);
     if (!roles.includes("admin")) throw new Error("Apenas admin pode remover pastes.");
     const { error } = await supabaseAdmin.from("pastes").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     return { ok: true };
   });
