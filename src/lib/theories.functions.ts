@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { safeDbError } from "./db-errors";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -35,7 +36,7 @@ export const listTheories = createServerFn({ method: "GET" }).handler(async () =
     .from("theories")
     .select("*")
     .order("title", { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) throw safeDbError(error);
   return { theories: (data ?? []) as TheoryRow[] };
 });
 
@@ -49,7 +50,7 @@ export const getTheoryBySlug = createServerFn({ method: "GET" })
       .select("*")
       .eq("slug", data.slug)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     if (!theory) return { theory: null, sources: [] as SourceRow[] };
 
     const { data: sources, error: srcErr } = await supabaseAdmin
@@ -57,7 +58,7 @@ export const getTheoryBySlug = createServerFn({ method: "GET" })
       .select("*")
       .eq("theory_id", theory.id)
       .order("year", { ascending: false });
-    if (srcErr) throw new Error(srcErr.message);
+    if (srcErr) throw safeDbError(srcErr);
 
     return {
       theory: theory as TheoryRow,
@@ -70,7 +71,7 @@ export const listAllSources = createServerFn({ method: "GET" }).handler(async ()
     .from("sources")
     .select("*, theories(slug, title, codename)")
     .order("year", { ascending: false });
-  if (error) throw new Error(error.message);
+  if (error) throw safeDbError(error);
   return { sources: data ?? [] };
 });
 
@@ -85,7 +86,7 @@ export const getSignedDocumentUrl = createServerFn({ method: "POST" })
       .from("user_roles")
       .select("role")
       .eq("user_id", context.userId);
-    if (rErr) throw new Error(rErr.message);
+    if (rErr) throw safeDbError(rErr);
     const roles = (roleRows ?? []).map((r) => r.role);
     if (!roles.includes("admin") && !roles.includes("editor")) {
       throw new Error("Acesso negado a documentos restritos.");
@@ -93,7 +94,7 @@ export const getSignedDocumentUrl = createServerFn({ method: "POST" })
     const { data: signed, error } = await supabaseAdmin.storage
       .from("documents")
       .createSignedUrl(data.path, 60 * 10);
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     return { url: signed.signedUrl };
   });
 
@@ -113,7 +114,7 @@ export const searchTheoryContext = createServerFn({ method: "POST" })
     const { data: rows, error } = await supabaseAdmin
       .from("theories")
       .select("id, slug, title, codename, summary, tags, entities, year, credibility");
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
 
     const scored = (rows ?? []).map((t) => {
       const hay = `${t.title} ${t.codename} ${t.summary} ${(t.tags ?? []).join(" ")} ${(t.entities ?? []).join(" ")}`.toLowerCase();

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { safeDbError } from "./db-errors";
 import { z } from "zod";
 
 /**
@@ -13,7 +14,7 @@ import { z } from "zod";
 export const ownerExists = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 });
-  if (error) throw new Error(error.message);
+  if (error) throw safeDbError(error);
   return { exists: (data?.users?.length ?? 0) > 0 };
 });
 
@@ -50,7 +51,7 @@ export const bootstrapOwner = createServerFn({ method: "POST" })
     const { error: roleErr } = await supabaseAdmin
       .from("user_roles")
       .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
-    if (roleErr) throw new Error(roleErr.message);
+    if (roleErr) throw safeDbError(roleErr);
 
     return { ok: true };
   });

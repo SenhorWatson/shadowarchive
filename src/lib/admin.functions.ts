@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { safeDbError } from "./db-errors";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -38,7 +39,7 @@ async function assertEditor(userId: string) {
     .from("user_roles")
     .select("role")
     .eq("user_id", userId);
-  if (error) throw new Error(error.message);
+  if (error) throw safeDbError(error);
   const roles = (data ?? []).map((r) => r.role);
   if (!roles.includes("admin") && !roles.includes("editor")) {
     throw new Error("Acesso negado: requer papel admin ou editor.");
@@ -53,7 +54,7 @@ export const getMyRoles = createServerFn({ method: "GET" })
       .from("user_roles")
       .select("role")
       .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     const roles = (data ?? []).map((r) => r.role as string);
     const { count } = await supabaseAdmin
       .from("user_roles")
@@ -86,7 +87,7 @@ export const createTheory = createServerFn({ method: "POST" })
       .insert({ ...data, created_by: context.userId })
       .select("*")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     await supabaseAdmin.from("moderation_logs").insert({
       level: "approved",
       reason: `Teoria criada: ${data.codename}`,
@@ -103,7 +104,7 @@ export const deleteTheory = createServerFn({ method: "POST" })
     const roles = await assertEditor(context.userId);
     if (!roles.includes("admin")) throw new Error("Apenas admin pode remover teorias.");
     const { error } = await supabaseAdmin.from("theories").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     return { ok: true };
   });
 
@@ -122,7 +123,7 @@ export const deleteSource = createServerFn({ method: "POST" })
       await supabaseAdmin.storage.from("documents").remove([src.file_path]);
     }
     const { error } = await supabaseAdmin.from("sources").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     if (src?.theory_id) {
       await supabaseAdmin
         .from("theories")
@@ -167,7 +168,7 @@ export const createSource = createServerFn({ method: "POST" })
       .insert(data)
       .select("*")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     await supabaseAdmin
       .from("theories")
       .update({ document_count: (await sourceCount(data.theory_id)) })
@@ -193,7 +194,7 @@ export const listModerationLogs = createServerFn({ method: "GET" })
       .select("*")
       .order("created_at", { ascending: false })
       .limit(50);
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     return { logs: data ?? [] };
   });
 
@@ -228,7 +229,7 @@ export const createSignedUpload = createServerFn({ method: "POST" })
     const { data: signed, error } = await supabaseAdmin.storage
       .from("documents")
       .createSignedUploadUrl(path);
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     return { path, token: signed.token };
   });
 
@@ -252,7 +253,7 @@ export const updateTheory = createServerFn({ method: "POST" })
       .eq("id", id)
       .select("*")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     return { theory: row };
   });
 
@@ -275,7 +276,7 @@ export const updateSource = createServerFn({ method: "POST" })
       .eq("id", id)
       .select("*")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     return { source: row };
   });
 
@@ -289,7 +290,7 @@ export const listUsersAndRoles = createServerFn({ method: "GET" })
       page: 1,
       perPage: 200,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     const { data: roleRows } = await supabaseAdmin
       .from("user_roles")
       .select("user_id, role");
@@ -326,7 +327,7 @@ export const setUserRole = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("user_roles")
       .upsert({ user_id: data.user_id, role: data.role }, { onConflict: "user_id,role" });
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     await supabaseAdmin.from("moderation_logs").insert({
       level: "approved",
       reason: `Papel ${data.role} atribuído a ${data.user_id}`,
@@ -361,6 +362,6 @@ export const removeUserRole = createServerFn({ method: "POST" })
       .delete()
       .eq("user_id", data.user_id)
       .eq("role", data.role);
-    if (error) throw new Error(error.message);
+    if (error) throw safeDbError(error);
     return { ok: true };
   });
