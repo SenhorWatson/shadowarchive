@@ -81,14 +81,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ShadowArchive AI — Arquivo Investigativo" },
+      { title: "ShadowArchive AI — Plataforma Investigativa" },
       {
         name: "description",
         content:
           "Plataforma investigativa baseada em IA para catalogação e exploração de conteúdos conspiratórios documentais.",
       },
       { name: "author", content: "ShadowArchive" },
-      { property: "og:title", content: "ShadowArchive AI" },
+      { property: "og:title", content: "ShadowArchive AI — Plataforma Investigativa" },
       {
         property: "og:description",
         content: "Arquivo investigativo cyberpunk com IA contextual.",
@@ -96,6 +96,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "ShadowArchive AI — Plataforma Investigativa" },
+      { name: "description", content: "Plataforma investigativa baseada em inteligência artificial focada na organização, catalogação, exploração e contextualização de conteúdos conspiratórios." },
+      { property: "og:description", content: "Plataforma investigativa baseada em inteligência artificial focada na organização, catalogação, exploração e contextualização de conteúdos conspiratórios." },
+      { name: "twitter:description", content: "Plataforma investigativa baseada em inteligência artificial focada na organização, catalogação, exploração e contextualização de conteúdos conspiratórios." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1d690e05-8779-42a5-88f5-9d822f38bdac/id-preview-f503e874--a559489a-0116-4b06-b20d-e69fb4c82e49.lovable.app-1781224180648.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/1d690e05-8779-42a5-88f5-9d822f38bdac/id-preview-f503e874--a559489a-0116-4b06-b20d-e69fb4c82e49.lovable.app-1781224180648.png" },
     ],
     links: [
       {
