@@ -3,6 +3,7 @@ import { safeDbError } from "./db-errors";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { notifyTelegram } from "./telegram.server";
 
 const credibility = z.enum([
   "confirmed",
@@ -94,6 +95,13 @@ export const createTheory = createServerFn({ method: "POST" })
       user_id: context.userId,
       context: { theory_id: row.id, slug: data.slug },
     });
+    await notifyTelegram("theory.create", data.title, {
+      codename: data.codename,
+      slug: data.slug,
+      category: data.category,
+      credibilidade: data.credibility,
+      classificação: data.classification,
+    });
     return { theory: row };
   });
 
@@ -105,6 +113,7 @@ export const deleteTheory = createServerFn({ method: "POST" })
     if (!roles.includes("admin")) throw new Error("Apenas admin pode remover teorias.");
     const { error } = await supabaseAdmin.from("theories").delete().eq("id", data.id);
     if (error) throw safeDbError(error);
+    await notifyTelegram("theory.delete", "Teoria removida", { id: data.id });
     return { ok: true };
   });
 
@@ -136,6 +145,7 @@ export const deleteSource = createServerFn({ method: "POST" })
       user_id: context.userId,
       context: { source_id: data.id },
     });
+    await notifyTelegram("source.delete", "Fonte removida", { id: data.id });
     return { ok: true };
   });
 
@@ -173,6 +183,12 @@ export const createSource = createServerFn({ method: "POST" })
       .from("theories")
       .update({ document_count: (await sourceCount(data.theory_id)) })
       .eq("id", data.theory_id);
+    await notifyTelegram("source.create", data.title, {
+      tipo: data.source_type,
+      agência: data.agency ?? undefined,
+      ano: data.year ?? undefined,
+      credibilidade: data.credibility,
+    });
     return { source: row };
   });
 
@@ -254,6 +270,10 @@ export const updateTheory = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw safeDbError(error);
+    await notifyTelegram("theory.update", row.title ?? "Teoria atualizada", {
+      slug: row.slug,
+      campos: Object.keys(rest).join(", "),
+    });
     return { theory: row };
   });
 
@@ -334,6 +354,9 @@ export const setUserRole = createServerFn({ method: "POST" })
       user_id: context.userId,
       context: { target: data.user_id, role: data.role },
     });
+    await notifyTelegram("role.assign", `Papel ${data.role} atribuído`, {
+      user_id: data.user_id,
+    });
     return { ok: true };
   });
 
@@ -363,5 +386,8 @@ export const removeUserRole = createServerFn({ method: "POST" })
       .eq("user_id", data.user_id)
       .eq("role", data.role);
     if (error) throw safeDbError(error);
+    await notifyTelegram("role.remove", `Papel ${data.role} removido`, {
+      user_id: data.user_id,
+    });
     return { ok: true };
   });
