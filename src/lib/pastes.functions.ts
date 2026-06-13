@@ -3,6 +3,7 @@ import { safeDbError } from "./db-errors";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { notifyTelegram } from "./telegram.server";
 
 const FORBIDDEN = [
   "alien","alienígena","alienigena","ufo","óvni","ovni",
@@ -83,6 +84,11 @@ export const createPaste = createServerFn({ method: "POST" })
       user_id: context.userId,
       context: { paste_id: row.id, slug: data.slug },
     });
+    await notifyTelegram("paste.create", data.title, {
+      slug: data.slug,
+      autor: data.author,
+      tags: data.tags.join(", ") || undefined,
+    });
     return { paste: row };
   });
 
@@ -94,5 +100,6 @@ export const deletePaste = createServerFn({ method: "POST" })
     if (!roles.includes("admin")) throw new Error("Apenas admin pode remover pastes.");
     const { error } = await supabaseAdmin.from("pastes").delete().eq("id", data.id);
     if (error) throw safeDbError(error);
+    await notifyTelegram("paste.delete", "Relatório removido", { id: data.id });
     return { ok: true };
   });
