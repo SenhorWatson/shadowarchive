@@ -76,6 +76,7 @@ export type Database = {
           published: boolean
           slug: string
           tags: string[]
+          theory_id: string | null
           title: string
           updated_at: string
         }
@@ -89,6 +90,7 @@ export type Database = {
           published?: boolean
           slug: string
           tags?: string[]
+          theory_id?: string | null
           title: string
           updated_at?: string
         }
@@ -102,10 +104,19 @@ export type Database = {
           published?: boolean
           slug?: string
           tags?: string[]
+          theory_id?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pastes_theory_id_fkey"
+            columns: ["theory_id"]
+            isOneToOne: false
+            referencedRelation: "theories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
