@@ -102,6 +102,7 @@ export const createTheory = createServerFn({ method: "POST" })
       credibilidade: data.credibility,
       classificação: data.classification,
     });
+    await syncTheoryPaste(row.id, context.userId);
     return { theory: row };
   });
 
@@ -189,6 +190,7 @@ export const createSource = createServerFn({ method: "POST" })
       ano: data.year ?? undefined,
       credibilidade: data.credibility,
     });
+    await syncTheoryPaste(data.theory_id, context.userId);
     return { source: row };
   });
 
@@ -370,6 +372,7 @@ export const updateTheory = createServerFn({ method: "POST" })
       slug: row.slug,
       campos: Object.keys(rest).join(", "),
     });
+    await syncTheoryPaste(id, context.userId);
     return { theory: row };
   });
 
@@ -393,6 +396,7 @@ export const updateSource = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw safeDbError(error);
+    if (row?.theory_id) await syncTheoryPaste(row.theory_id, context.userId);
     return { source: row };
   });
 
