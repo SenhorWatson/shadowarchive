@@ -102,6 +102,7 @@ export const createTheory = createServerFn({ method: "POST" })
       credibilidade: data.credibility,
       classificação: data.classification,
     });
+    await syncTheoryPaste(row.id, context.userId);
     return { theory: row };
   });
 
@@ -138,6 +139,7 @@ export const deleteSource = createServerFn({ method: "POST" })
         .from("theories")
         .update({ document_count: await sourceCount(src.theory_id) })
         .eq("id", src.theory_id);
+      await syncTheoryPaste(src.theory_id, context.userId);
     }
     await supabaseAdmin.from("moderation_logs").insert({
       level: "approved",
@@ -189,6 +191,7 @@ export const createSource = createServerFn({ method: "POST" })
       ano: data.year ?? undefined,
       credibilidade: data.credibility,
     });
+    await syncTheoryPaste(data.theory_id, context.userId);
     return { source: row };
   });
 
@@ -198,6 +201,102 @@ async function sourceCount(theoryId: string) {
     .select("*", { count: "exact", head: true })
     .eq("theory_id", theoryId);
   return count ?? 0;
+}
+
+// ---------- SINCRONIZAÇÃO AUTOMÁTICA: 1 paste por teoria ----------
+function buildTheoryPasteBody(
+  theory: {
+    title: string;
+    codename: string;
+    summary: string;
+    category: string;
+    classification: string;
+    credibility: string;
+    year?: string | null;
+    tags?: string[] | null;
+    entities?: string[] | null;
+  },
+  sources: Array<{
+    title: string;
+    source_type?: string | null;
+    agency?: string | null;
+    year?: string | null;
+    url?: string | null;
+    description?: string | null;
+  }>,
+) {
+  const lines: string[] = [];
+  lines.push(`# ${theory.title}`);
+  lines.push("");
+  lines.push(
+    `**Codename:** ${theory.codename} · **Categoria:** ${theory.category} · **Classificação:** ${theory.classification} · **Credibilidade:** ${theory.credibility}${theory.year ? ` · **Período:** ${theory.year}` : ""}`,
+  );
+  lines.push("");
+  lines.push("## Sumário");
+  lines.push(theory.summary);
+  if (theory.entities?.length) {
+    lines.push("");
+    lines.push("## Entidades relacionadas");
+    for (const e of theory.entities) lines.push(`- ${e}`);
+  }
+  lines.push("");
+  lines.push("## Fontes primárias");
+  if (!sources.length) {
+    lines.push("_Nenhuma fonte indexada até o momento._");
+  } else {
+    for (const s of sources) {
+      const meta = [s.source_type, s.agency, s.year].filter(Boolean).join(" · ");
+      const link = s.url ? ` — [link](${s.url})` : "";
+      lines.push(`- **${s.title}**${meta ? ` (${meta})` : ""}${link}`);
+      if (s.description) lines.push(`  - ${s.description}`);
+    }
+  }
+  lines.push("");
+  lines.push("---");
+  lines.push(
+    "_Relatório gerado automaticamente a partir do registro da teoria. Atualizações refletem mudanças no arquivo._",
+  );
+  return lines.join("\n");
+}
+
+export async function syncTheoryPaste(theoryId: string, userId: string) {
+  const { data: theory, error: tErr } = await supabaseAdmin
+    .from("theories")
+    .select("*")
+    .eq("id", theoryId)
+    .maybeSingle();
+  if (tErr) throw safeDbError(tErr);
+  if (!theory) return;
+  const { data: sources } = await supabaseAdmin
+    .from("sources")
+    .select("title, source_type, agency, year, url, description")
+    .eq("theory_id", theoryId)
+    .order("year", { ascending: false });
+  const body_md = buildTheoryPasteBody(theory as any, (sources ?? []) as any);
+  const slug = `teoria-${theory.slug}`.slice(0, 120);
+  const excerpt = (theory.summary ?? "").slice(0, 480);
+  const tags = Array.from(
+    new Set([
+      ...(theory.tags ?? []),
+      theory.category,
+      theory.codename,
+    ].filter(Boolean) as string[]),
+  ).slice(0, 20);
+  const payload = {
+    theory_id: theoryId,
+    slug,
+    title: theory.title,
+    excerpt,
+    body_md,
+    tags,
+    author: "shadow_archive",
+    published: true,
+    created_by: userId,
+  };
+  const { error } = await supabaseAdmin
+    .from("pastes")
+    .upsert(payload, { onConflict: "theory_id" });
+  if (error) console.error("[syncTheoryPaste]", error);
 }
 
 export const listModerationLogs = createServerFn({ method: "GET" })
@@ -274,6 +373,7 @@ export const updateTheory = createServerFn({ method: "POST" })
       slug: row.slug,
       campos: Object.keys(rest).join(", "),
     });
+    await syncTheoryPaste(id, context.userId);
     return { theory: row };
   });
 
@@ -297,6 +397,7 @@ export const updateSource = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw safeDbError(error);
+    if (row?.theory_id) await syncTheoryPaste(row.theory_id, context.userId);
     return { source: row };
   });
 
