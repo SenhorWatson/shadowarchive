@@ -139,6 +139,7 @@ export const deleteSource = createServerFn({ method: "POST" })
         .from("theories")
         .update({ document_count: await sourceCount(src.theory_id) })
         .eq("id", src.theory_id);
+      await syncTheoryPaste(src.theory_id, context.userId);
     }
     await supabaseAdmin.from("moderation_logs").insert({
       level: "approved",
